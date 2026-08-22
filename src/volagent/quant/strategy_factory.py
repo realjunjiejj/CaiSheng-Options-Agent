@@ -1,4 +1,4 @@
-"""Multi-leg strategy synthesis with topological validation and strict sizing."""
+"""Multi-leg strategy synthesis with topological validation, exact break-evens, and strict sizing."""
 
 from datetime import datetime, timezone
 import hashlib
@@ -23,6 +23,8 @@ def build_long_straddle_candidate(
         raise ValidationError("Long Straddle requires identical ATM call and put strikes.")
     if atm_call.expiration != atm_put.expiration:
         raise ValidationError("Long Straddle requires identical expirations.")
+    if spot_price <= 0:
+        raise ValidationError(f"Spot price must be positive, got {spot_price}")
 
     t_exp = year_fraction_to_expiry(atm_call.quote_time, atm_call.expiration)
     if t_exp <= 0:
@@ -30,7 +32,8 @@ def build_long_straddle_candidate(
 
     call_entry = atm_call.ask
     put_entry = atm_put.ask
-    debit_per_unit = (call_entry + put_entry) * 100.0  # 100 multiplier
+    debit_per_share = call_entry + put_entry
+    debit_per_unit = debit_per_share * 100.0  # 100 multiplier
 
     # Target recommended risk budget (0.5% NAV)
     budget = nav * risk_config.recommended_risk_nav_pct
@@ -87,6 +90,10 @@ def build_long_straddle_candidate(
     net_vega = (c_greeks["vega"] + p_greeks["vega"]) * multiplier_scaled
 
     max_loss = debit_per_unit * final_qty
+    break_evens = [
+        round(atm_call.strike - debit_per_share, 2),
+        round(atm_call.strike + debit_per_share, 2),
+    ]
     strat_hash = hashlib.sha256(f"STRADDLE:{atm_call.symbol}:{atm_put.symbol}".encode()).hexdigest()[:12]
 
     return StrategyCandidate(
@@ -101,6 +108,7 @@ def build_long_straddle_candidate(
         net_vega=net_vega,
         max_loss=max_loss,
         max_profit=None,
+        break_evens=break_evens,
         liquidity_score=0.90,
     )
 
@@ -127,6 +135,9 @@ def build_short_iron_butterfly_candidate(
     if not (atm_put.expiration == wing_call.expiration == wing_put.expiration == exp):
         raise ValidationError("All 4 legs of Iron Butterfly must share the identical expiration date.")
 
+    if spot_price <= 0:
+        raise ValidationError(f"Spot price must be positive, got {spot_price}")
+
     t_exp = year_fraction_to_expiry(atm_call.quote_time, exp)
     if t_exp <= 0:
         t_exp = 1.0 / 365.0
@@ -142,10 +153,13 @@ def build_short_iron_butterfly_candidate(
         raise ValidationError(f"Iron Butterfly must produce a positive net credit, got {credit_per_share:.2f}")
 
     credit_per_unit = credit_per_share * 100.0
-    wing_width = min(atm_call.strike - wing_put.strike, wing_call.strike - atm_call.strike)
-    max_loss_per_unit = (wing_width * 100.0) - credit_per_unit
+    lower_wing_width = atm_put.strike - wing_put.strike
+    upper_wing_width = wing_call.strike - atm_call.strike
+    # P0-03 Fix: Maximum loss uses the larger wing width
+    max_wing_width = max(lower_wing_width, upper_wing_width)
+    max_loss_per_unit = (max_wing_width * 100.0) - credit_per_unit
     if max_loss_per_unit <= 0:
-        max_loss_per_unit = wing_width * 100.0
+        max_loss_per_unit = max_wing_width * 100.0
 
     budget = nav * risk_config.recommended_risk_nav_pct
     affordable_qty = int(budget // max_loss_per_unit) if max_loss_per_unit > 0 else 0
@@ -229,6 +243,10 @@ def build_short_iron_butterfly_candidate(
     net_theta = (g_lp["theta"] - g_sp["theta"] - g_sc["theta"] + g_lc["theta"]) * multiplier_scaled
     net_vega = (g_lp["vega"] - g_sp["vega"] - g_sc["vega"] + g_lc["vega"]) * multiplier_scaled
 
+    break_evens = [
+        round(atm_call.strike - credit_per_share, 2),
+        round(atm_call.strike + credit_per_share, 2),
+    ]
     strat_hash = hashlib.sha256(f"IBFLY:{atm_call.symbol}:{wing_call.symbol}:{wing_put.symbol}".encode()).hexdigest()[:12]
 
     return StrategyCandidate(
@@ -243,5 +261,6 @@ def build_short_iron_butterfly_candidate(
         net_vega=net_vega,
         max_loss=max_loss_per_unit * final_qty,
         max_profit=credit_per_unit * final_qty,
+        break_evens=break_evens,
         liquidity_score=0.85,
     )

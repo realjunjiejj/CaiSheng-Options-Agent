@@ -6,6 +6,10 @@ class VolAgentError(Exception):
     pass
 
 
+# Compatibility alias
+VolAgentException = VolAgentError
+
+
 class ConfigurationError(VolAgentError):
     """Raised when configuration or environment parameters are invalid."""
     pass

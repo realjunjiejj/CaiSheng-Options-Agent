@@ -1,4 +1,4 @@
-"""Alpaca Pro Terminal Plotly visualizer for Options Payoff Curves."""
+"""Alpaca Pro Terminal Plotly visualizer for Options Payoff Curves and Greeks."""
 
 from typing import Any
 import numpy as np
@@ -48,7 +48,7 @@ def create_payoff_plot(
     )
 
     # 3. Break-Even Boundary Markers
-    for be in data["break_evens"]:
+    for be in data.get("break_evens", []):
         fig.add_vline(
             x=be,
             line_dash="dash",
@@ -59,7 +59,7 @@ def create_payoff_plot(
             annotation_font=dict(color="#E6EDF3", size=11, family="JetBrains Mono"),
         )
 
-    # 4. Primary Payoff Curve (Alpaca Yellow or Neon Green)
+    # 4. Primary Payoff Curve (Alpaca Yellow or Electric Blue)
     is_straddle = "straddle" in candidate.strategy_id
     primary_color = CYAN_ACCENT if is_straddle else ALPACA_YELLOW
 
@@ -118,4 +118,65 @@ def create_payoff_plot(
         ),
     )
 
+    return fig
+
+
+def create_greeks_bar_chart(candidate: StrategyCandidate) -> go.Figure:
+    """Generate analytical Greeks breakdown bar chart."""
+    greeks = ["Delta (Δ)", "Gamma (Γ)", "Vega (V / pt)", "Theta (Θ / day)"]
+    values = [candidate.net_delta, candidate.net_gamma, candidate.net_vega, candidate.net_theta]
+    colors = [CYAN_ACCENT, ALPACA_YELLOW, PURPLE_VOL, RED_LOSS]
+
+    fig = go.Figure(
+        go.Bar(
+            x=greeks,
+            y=values,
+            marker_color=colors,
+            text=[f"{v:+.2f}" for v in values],
+            textposition="auto",
+        )
+    )
+    fig.update_layout(
+        title=dict(text="<b>ANALYTICAL GREEKS EXPOSURE</b>", font=dict(family="JetBrains Mono", size=13, color=TEXT_PRIMARY)),
+        template="plotly_dark",
+        paper_bgcolor=ALPACA_CARD,
+        plot_bgcolor=ALPACA_DARK,
+        margin=dict(l=30, r=20, t=40, b=30),
+        yaxis=dict(gridcolor="rgba(255, 255, 255, 0.05)"),
+    )
+    return fig
+
+
+def create_stress_heatmap(candidate: StrategyCandidate) -> go.Figure:
+    """Generate 2D Price vs IV stress loss heatmap."""
+    price_shocks = ["-15%", "-10%", "-5%", "0%", "+5%", "+10%", "+15%"]
+    iv_shocks = ["-30%", "-15%", "0%", "+15%", "+30%"]
+
+    z_matrix = []
+    for p in [-0.15, -0.10, -0.05, 0.0, 0.05, 0.10, 0.15]:
+        row = []
+        for v in [-0.30, -0.15, 0.0, 0.15, 0.30]:
+            key = f"P_{int(p*100):+03d}_IV_{int(v*100):+03d}"
+            loss = candidate.stress_losses.get(key, candidate.max_loss)
+            row.append(loss)
+        z_matrix.append(row)
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=z_matrix,
+            x=iv_shocks,
+            y=price_shocks,
+            colorscale="Reds",
+            colorbar=dict(title="Stress Loss ($)"),
+        )
+    )
+    fig.update_layout(
+        title=dict(text="<b>2D STRESS MATRIX (Price vs IV Shock)</b>", font=dict(family="JetBrains Mono", size=13, color=TEXT_PRIMARY)),
+        xaxis=dict(title="IV Shock"),
+        yaxis=dict(title="Price Shock"),
+        template="plotly_dark",
+        paper_bgcolor=ALPACA_CARD,
+        plot_bgcolor=ALPACA_DARK,
+        margin=dict(l=40, r=30, t=40, b=30),
+    )
     return fig

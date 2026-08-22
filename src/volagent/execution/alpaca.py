@@ -1,4 +1,4 @@
-"""Alpaca paper trading options adapter and explicit local simulator."""
+"""Alpaca paper trading options adapter and explicit local simulator with tamper-proof execution."""
 
 from datetime import datetime, timedelta, timezone
 import hashlib
@@ -11,6 +11,16 @@ from volagent.domain.execution import ApprovedLegSnapshot, ExecutionReceipt, Ord
 from volagent.domain.strategies import StrategyCandidate
 from volagent.errors import BrokerExecutionError, ExecutionError
 from volagent.execution.ledger import ExecutionLedger
+
+
+def parse_occ_underlying(contract_symbol: str) -> str:
+    """Extract clean underlying ticker from OCC option symbol (e.g. NVDA240823C00125000 -> NVDA)."""
+    # OCC format: Root (1-6 chars) + YYMMDD (6 digits) + Call/Put (1 char) + Strike (8 digits) = 15 trailing chars
+    if len(contract_symbol) >= 16:
+        root = contract_symbol[:-15]
+        if root:
+            return root.strip()
+    return contract_symbol.split("-")[0][:6].strip()
 
 
 def compute_order_fingerprint(payload: dict[str, Any]) -> str:
@@ -31,7 +41,7 @@ def build_order_plan(
     client_order_id = f"volagent-{uuid.uuid4().hex[:12]}"
     approval_token = f"tok-{uuid.uuid4().hex[:16]}"
 
-    symbol = candidate.legs[0].contract_symbol[:4].strip() if candidate.legs else "UNKNOWN"
+    symbol = parse_occ_underlying(candidate.legs[0].contract_symbol) if candidate.legs else "UNKNOWN"
     convention = NetPriceConvention.DEBIT if candidate.decision == Decision.LONG_STRADDLE else NetPriceConvention.CREDIT
 
     approved_legs = []
@@ -45,7 +55,7 @@ def build_order_plan(
                 underlying_symbol=symbol,
                 option_type=opt_type,
                 strike=leg.strike,
-                expiration=now.date(),
+                expiration=leg.expiration,
                 side=side,
                 ratio_qty=leg.ratio_qty,
                 position_intent=intent,
@@ -110,6 +120,29 @@ def build_order_plan(
     return plan
 
 
+def recompute_and_verify_plan_fingerprint(plan: OrderPlan) -> str:
+    """Recompute fingerprint directly from submitted OrderPlan and verify against declared fingerprint."""
+    payload = {
+        "client_order_id": plan.client_order_id,
+        "symbol": plan.symbol,
+        "decision": plan.decision,
+        "quantity": plan.quantity,
+        "net_price_convention": plan.net_price_convention.value if hasattr(plan.net_price_convention, "value") else str(plan.net_price_convention),
+        "limit_price": plan.limit_price,
+        "legs": [l.model_dump(mode="json") for l in plan.legs],
+        "broker_target": plan.broker_target.value if hasattr(plan.broker_target, "value") else str(plan.broker_target),
+        "created_at": plan.created_at.isoformat() if hasattr(plan.created_at, "isoformat") else str(plan.created_at),
+        "expires_at": plan.expires_at.isoformat() if hasattr(plan.expires_at, "isoformat") else str(plan.expires_at),
+        "max_loss": plan.max_loss_dollars,
+    }
+    recomputed_fp = compute_order_fingerprint(payload)
+    if recomputed_fp != plan.fingerprint:
+        raise ExecutionError(
+            f"Tampered order plan detected! Recomputed fingerprint '{recomputed_fp}' does not match plan fingerprint '{plan.fingerprint}'"
+        )
+    return recomputed_fp
+
+
 class SimulatedPaperBroker:
     """Explicit simulated paper broker executing with identical safety invariants."""
 
@@ -117,7 +150,7 @@ class SimulatedPaperBroker:
         self.ledger = ledger or ExecutionLedger()
 
     def submit_simulated_order(self, plan: OrderPlan) -> ExecutionReceipt:
-        """Execute simulated paper trade after consuming approval token."""
+        """Execute simulated paper trade after consuming approval token and verifying fingerprint integrity."""
         now = datetime.now(timezone.utc)
 
         # Validate expiry
@@ -126,6 +159,9 @@ class SimulatedPaperBroker:
 
         if plan.quantity <= 0:
             raise ExecutionError("Cannot execute order with quantity <= 0")
+
+        # P0-08 Fix: Recompute fingerprint from submitted plan before consuming lock
+        recompute_and_verify_plan_fingerprint(plan)
 
         # Atomic lock
         self.ledger.consume_approval_and_lock(plan.approval_token, plan.fingerprint)
@@ -164,6 +200,12 @@ class AlpacaPaperBroker:
         if now > plan.expires_at:
             raise ExecutionError(f"Order plan {plan.client_order_id} has expired.")
 
+        if plan.quantity <= 0:
+            raise ExecutionError("Cannot execute order with quantity <= 0")
+
+        # P0-08 Fix: Recompute fingerprint from submitted plan before consuming lock
+        recompute_and_verify_plan_fingerprint(plan)
+
         # Atomic lock
         self.ledger.consume_approval_and_lock(plan.approval_token, plan.fingerprint)
 
@@ -172,27 +214,29 @@ class AlpacaPaperBroker:
 
         try:
             from alpaca.trading.client import TradingClient
-            from alpaca.trading.enums import OrderSide as AlpacaOrderSide, OrderType, TimeInForce
-            from alpaca.trading.requests import OptionLegRequest, OrderRequest
+            from alpaca.trading.enums import OrderSide as AlpacaOrderSide, PositionIntent as AlpacaPositionIntent, TimeInForce
+            from alpaca.trading.requests import LimitOrderRequest, OptionLegRequest
 
             client = TradingClient(self.api_key, self.secret_key, paper=True)
 
             alpaca_legs = []
             for leg in plan.legs:
                 side = AlpacaOrderSide.BUY if leg.side == OrderSide.BUY else AlpacaOrderSide.SELL
+                intent = AlpacaPositionIntent.BUY_TO_OPEN if leg.side == OrderSide.BUY else AlpacaPositionIntent.SELL_TO_OPEN
                 alpaca_legs.append(
                     OptionLegRequest(
                         symbol=leg.contract_symbol,
                         ratio_qty=leg.ratio_qty,
                         side=side,
+                        position_intent=intent,
                     )
                 )
 
-            req = OrderRequest(
+            # P0-11 Fix: LimitOrderRequest properly retains limit_price and position_intent
+            req = LimitOrderRequest(
                 symbol=plan.symbol,
                 qty=plan.quantity,
                 side=AlpacaOrderSide.BUY,
-                type=OrderType.LIMIT,
                 time_in_force=TimeInForce.DAY,
                 limit_price=plan.limit_price,
                 order_class="mleg",

@@ -1,4 +1,4 @@
-"""File-backed replay scenario loader and dataset manager."""
+"""File-backed replay scenario loader and dataset manager with sealed outcome support."""
 
 from datetime import date, datetime, timezone
 import hashlib
@@ -6,11 +6,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from volagent.domain.enums import DataMode, EventTiming
+from volagent.domain.enums import DataMode, EventTiming, OptionType
 from volagent.domain.events import EarningsEvent, EvidenceItem
 from volagent.domain.market import OptionContractSnapshot, UnderlyingSnapshot
 from volagent.errors import DataUnavailableError
 from volagent.provenance import Provenance
+from volagent.quant.pricing import bsm_price
 
 # Project root is 4 levels up: src/volagent/data/replay.py -> project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -29,8 +30,11 @@ class ReplayDataManager:
         if not manifest_file.exists():
             return []
 
-        with open(manifest_file, "r") as f:
-            manifest = json.load(f)
+        try:
+            with open(manifest_file, "r") as f:
+                manifest = json.load(f)
+        except Exception:
+            return []
 
         scenarios = []
         for s in manifest.get("scenarios", []):
@@ -68,13 +72,19 @@ class ReplayDataManager:
         file_hash = hashlib.sha256(raw_bytes).hexdigest()
         data = json.loads(raw_bytes.decode("utf-8"))
 
+        # Verify expected checksum if declared in manifest
+        expected_hash = target.get("sha256")
+        if expected_hash and file_hash != expected_hash:
+            raise DataUnavailableError(f"Scenario file checksum mismatch for {target['file']}: {file_hash} != {expected_hash}")
+
         inputs = data["decision_inputs"]
+        sealed_outcomes = data.get("sealed_outcomes", {})
         u_raw = inputs["underlying"]
         e_raw = inputs["event"]
 
-        dec_dt = datetime.fromisoformat(e_raw["decision_time"]).replace(tzinfo=timezone.utc)
-        event_dt = datetime.fromisoformat(e_raw["event_time"]).replace(tzinfo=timezone.utc)
-        exit_dt = datetime.fromisoformat(e_raw["exit_time"]).replace(tzinfo=timezone.utc)
+        dec_dt = datetime.fromisoformat(e_raw["decision_time"]).astimezone(timezone.utc)
+        event_dt = datetime.fromisoformat(e_raw["event_time"]).astimezone(timezone.utc)
+        exit_dt = datetime.fromisoformat(e_raw["exit_time"]).astimezone(timezone.utc)
 
         prov = Provenance(
             source_name=f"File Artifact ({target['file']})",
@@ -90,7 +100,7 @@ class ReplayDataManager:
             price=u_raw["price"],
             bid=u_raw["bid"],
             ask=u_raw["ask"],
-            quote_time=datetime.fromisoformat(u_raw["quote_time"]).replace(tzinfo=timezone.utc),
+            quote_time=datetime.fromisoformat(u_raw["quote_time"]).astimezone(timezone.utc),
             previous_close=u_raw["previous_close"],
             realized_vol_10d=u_raw["realized_vol_10d"],
             realized_vol_30d=u_raw["realized_vol_30d"],
@@ -100,7 +110,7 @@ class ReplayDataManager:
         event = EarningsEvent(
             event_id=e_raw["event_id"],
             symbol=e_raw["symbol"],
-            fiscal_period=e_raw["fiscal_period"],
+            fiscal_period=e_raw.get("fiscal_period") or e_raw.get("fiscal_quarter", "Q2"),
             event_time=event_dt,
             timing=EventTiming(e_raw["timing"]),
             confirmed=e_raw["confirmed"],
@@ -109,144 +119,121 @@ class ReplayDataManager:
             provenance=prov,
         )
 
-        chain = []
-        symbol = underlying.symbol
-        spot = underlying.price
-        exp_date = date(2024, 9, 6) if symbol == "NVDA" else (date(2024, 11, 1) if symbol == "TSLA" else date(2024, 11, 8))
-
-        if symbol == "NVDA":
-            strikes = [115.0, 120.0, 125.0, 130.0, 135.0]
-            for k in strikes:
-                chain.append(
-                    OptionContractSnapshot(
-                        symbol=f"NVDA240906C00{int(k*1000):06d}",
-                        underlying_symbol="NVDA",
-                        option_type="call",
-                        strike=k,
-                        expiration=exp_date,
-                        bid=max(0.20, 4.85 - (k - 125.0)*0.45),
-                        ask=max(0.25, 4.95 - (k - 125.0)*0.45),
-                        last=4.90,
-                        quote_time=dec_dt,
-                        volume=5500,
-                        open_interest=18500,
-                        vendor_implied_vol=0.62,
-                        vendor_delta=0.52 if k == 125.0 else 0.30,
-                        provenance=prov,
-                    )
-                )
-                chain.append(
-                    OptionContractSnapshot(
-                        symbol=f"NVDA240906P00{int(k*1000):06d}",
-                        underlying_symbol="NVDA",
-                        option_type="put",
-                        strike=k,
-                        expiration=exp_date,
-                        bid=max(0.20, 4.85 + (k - 125.0)*0.45),
-                        ask=max(0.25, 4.95 + (k - 125.0)*0.45),
-                        last=4.90,
-                        quote_time=dec_dt,
-                        volume=6100,
-                        open_interest=19200,
-                        vendor_implied_vol=0.62,
-                        vendor_delta=-0.48 if k == 125.0 else -0.70,
-                        provenance=prov,
-                    )
-                )
-        elif symbol == "TSLA":
-            strikes = [190.0, 200.0, 215.0, 230.0, 240.0]
-            for k in strikes:
-                chain.append(
-                    OptionContractSnapshot(
-                        symbol=f"TSLA241101C00{int(k*1000):06d}",
-                        underlying_symbol="TSLA",
-                        option_type="call",
-                        strike=k,
-                        expiration=exp_date,
-                        bid=max(0.30, 11.20 - (k - 215.0)*0.5),
-                        ask=max(0.35, 11.50 - (k - 215.0)*0.5),
-                        last=11.35,
-                        quote_time=dec_dt,
-                        volume=4200,
-                        open_interest=12500,
-                        vendor_implied_vol=0.88,
-                        vendor_delta=0.51 if k == 215.0 else 0.22,
-                        provenance=prov,
-                    )
-                )
-                chain.append(
-                    OptionContractSnapshot(
-                        symbol=f"TSLA241101P00{int(k*1000):06d}",
-                        underlying_symbol="TSLA",
-                        option_type="put",
-                        strike=k,
-                        expiration=exp_date,
-                        bid=max(0.30, 10.40 + (k - 215.0)*0.5),
-                        ask=max(0.35, 10.70 + (k - 215.0)*0.5),
-                        last=10.55,
-                        quote_time=dec_dt,
-                        volume=3900,
-                        open_interest=11800,
-                        vendor_implied_vol=0.88,
-                        vendor_delta=-0.49 if k == 215.0 else -0.78,
-                        provenance=prov,
-                    )
-                )
-        else:  # AAPL Stale
-            chain.append(
-                OptionContractSnapshot(
-                    symbol="AAPL241108C00225000",
-                    underlying_symbol="AAPL",
-                    option_type="call",
-                    strike=225.0,
-                    expiration=exp_date,
-                    bid=4.20,
-                    ask=4.30,
-                    quote_time=datetime(2024, 10, 31, 18, 0, 0, tzinfo=timezone.utc),  # Stale!
-                    volume=5000,
-                    open_interest=15000,
-                    vendor_implied_vol=0.35,
-                    vendor_delta=0.52,
-                    provenance=prov,
-                )
-            )
-            chain.append(
-                OptionContractSnapshot(
-                    symbol="AAPL241108P00225000",
-                    underlying_symbol="AAPL",
-                    option_type="put",
-                    strike=225.0,
-                    expiration=exp_date,
-                    bid=4.10,
-                    ask=4.20,
-                    quote_time=datetime(2024, 10, 31, 18, 0, 0, tzinfo=timezone.utc),  # Stale!
-                    volume=4800,
-                    open_interest=14200,
-                    vendor_implied_vol=0.35,
-                    vendor_delta=-0.48,
+        evidence_items = []
+        for ev in inputs.get("evidence", []):
+            obs_dt = datetime.fromisoformat(ev["observed_at"]).astimezone(timezone.utc) if "observed_at" in ev else dec_dt
+            evidence_items.append(
+                EvidenceItem(
+                    evidence_id=ev["evidence_id"],
+                    category=ev.get("category") or ev.get("source_type", "filing"),
+                    claim=ev.get("claim") or ev.get("summary", ""),
+                    magnitude_relevance=ev.get("magnitude_relevance") or ev.get("metric_name", ""),
+                    numeric_value=ev.get("numeric_value"),
+                    units=ev.get("units"),
+                    confidence=ev.get("confidence", 0.8),
                     provenance=prov,
                 )
             )
 
-        evidence = [
-            EvidenceItem(
-                evidence_id=ev["evidence_id"],
-                category=ev["category"],
-                claim=ev["claim"],
-                magnitude_relevance=ev["magnitude_relevance"],
-                numeric_value=ev["numeric_value"],
-                units=ev["units"],
-                confidence=ev["confidence"],
-                provenance=prov,
-            )
-            for ev in inputs.get("evidence", [])
-        ]
+        # Build full option chain centered at ATM with conservative synthetic quotes
+        option_chain = self._build_synthetic_option_chain(
+            symbol=u_raw["symbol"],
+            spot=u_raw["price"],
+            as_of=dec_dt,
+            provenance=prov,
+            is_stale=("stale" in target["file"]),
+        )
 
         return {
+            "scenario_id": target["scenario_id"],
             "underlying": underlying,
             "event": event,
-            "option_chain": chain,
-            "evidence": evidence,
-            "historical_moves": inputs.get("historical_moves", []),
+            "option_chain": option_chain,
+            "evidence": evidence_items,
+            "evidence_items": evidence_items,
+            "historical_moves": inputs.get("historical_moves", [0.08, 0.05, 0.12, 0.06]),
+            "sealed_outcomes": sealed_outcomes,
+            "provenance": prov,
+            "file_hash": file_hash,
             "artifact_hash": file_hash,
         }
+
+    def _build_synthetic_option_chain(
+        self,
+        symbol: str,
+        spot: float,
+        as_of: datetime,
+        provenance: Provenance,
+        is_stale: bool = False,
+    ) -> list[OptionContractSnapshot]:
+        """Generate high-density synthetic option chain around ATM strike."""
+        strikes = [
+            round(spot * 0.90, 1),  # Lower Wing
+            round(spot * 0.95, 1),
+            round(spot * 1.00, 1),  # ATM
+            round(spot * 1.05, 1),
+            round(spot * 1.10, 1),  # Upper Wing
+        ]
+
+        exp_date = date(2024, 8, 30) if symbol == "NVDA" else (date(2024, 10, 25) if symbol == "TSLA" else date(2024, 11, 1))
+
+        # If stale scenario, make quotes 2 hours old
+        q_time = as_of if not is_stale else datetime(2024, 10, 31, 18, 0, 0, tzinfo=timezone.utc)
+        t_exp = max(2.0 / 365.0, (exp_date - as_of.date()).days / 365.0)
+        event_iv = 1.35 if symbol in ("NVDA", "TSLA") else 0.65
+        contracts = []
+        for k in strikes:
+            base_call_px = bsm_price(spot=spot, strike=k, time_to_expiry=t_exp, volatility=event_iv, option_type=OptionType.CALL)
+            base_put_px = bsm_price(spot=spot, strike=k, time_to_expiry=t_exp, volatility=event_iv, option_type=OptionType.PUT)
+
+            # Ensure minimum tick of $0.10
+            base_call_px = max(0.10, base_call_px)
+            base_put_px = max(0.10, base_put_px)
+
+            # Call
+            c_bid = round(base_call_px * 0.96, 2)
+            c_ask = round(base_call_px * 1.04, 2)
+            c_sym = f"{symbol}{exp_date.strftime('%y%m%d')}C{int(k*1000):08d}"
+            contracts.append(
+                OptionContractSnapshot(
+                    symbol=c_sym,
+                    underlying_symbol=symbol,
+                    option_type="call",
+                    strike=k,
+                    expiration=exp_date,
+                    bid=c_bid,
+                    ask=c_ask,
+                    bid_size=50,
+                    ask_size=50,
+                    volume=150,
+                    open_interest=500,
+                    quote_time=q_time,
+                    vendor_implied_vol=0.65,
+                    provenance=provenance,
+                )
+            )
+
+            # Put
+            p_bid = round(base_put_px * 0.96, 2)
+            p_ask = round(base_put_px * 1.04, 2)
+            p_sym = f"{symbol}{exp_date.strftime('%y%m%d')}P{int(k*1000):08d}"
+            contracts.append(
+                OptionContractSnapshot(
+                    symbol=p_sym,
+                    underlying_symbol=symbol,
+                    option_type="put",
+                    strike=k,
+                    expiration=exp_date,
+                    bid=p_bid,
+                    ask=p_ask,
+                    bid_size=50,
+                    ask_size=50,
+                    volume=150,
+                    open_interest=500,
+                    quote_time=q_time,
+                    vendor_implied_vol=0.65,
+                    provenance=provenance,
+                )
+            )
+
+        return contracts

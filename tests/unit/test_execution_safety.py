@@ -70,3 +70,67 @@ def test_simulated_receipt_is_never_labeled_alpaca(tmp_path: Path):
     assert receipt.broker_target == BrokerTarget.SIMULATED_LOCAL
     assert receipt.status == ExecutionStatus.SIMULATED
     assert receipt.broker_order_id.startswith("sim-")
+
+
+def test_fingerprint_recomputed_before_simulated_dispatch(tmp_path: Path):
+    """P0-08 Fix: Recompute fingerprint from submitted OrderPlan and reject if tampered."""
+    db_file = tmp_path / "test_ledger.db"
+    ledger = ExecutionLedger(db_path=db_file)
+    cand = create_mock_candidate()
+
+    plan = build_order_plan(cand, broker_target=BrokerTarget.SIMULATED_LOCAL, ledger=ledger)
+    ledger.approve_order(plan.approval_token)
+
+    # Tamper with quantity (change from 1 to 9 while keeping same fingerprint)
+    tampered_plan = plan.model_copy(update={"quantity": 9})
+
+    broker = SimulatedPaperBroker(ledger=ledger)
+    with pytest.raises(ExecutionError, match="Tampered order plan detected"):
+        broker.submit_simulated_order(tampered_plan)
+
+
+def test_order_plan_preserves_exact_approved_leg_snapshot():
+    """P0-09 Fix: Order plan must preserve exact expiration date and contract strikes from candidate."""
+    cand = create_mock_candidate()
+    plan = build_order_plan(cand, broker_target=BrokerTarget.SIMULATED_LOCAL)
+
+    assert len(plan.legs) == 2
+    assert plan.legs[0].expiration == date(2024, 9, 6)
+    assert plan.legs[0].strike == 125.0
+    assert plan.legs[0].entry_price_assumption == 5.0
+    assert plan.symbol == "NVDA"
+
+
+def test_alpaca_limit_request_serializes_limit_price():
+    """P0-11 Fix: Alpaca LimitOrderRequest retains limit_price and position_intent."""
+    from alpaca.trading.requests import LimitOrderRequest, OptionLegRequest
+    from alpaca.trading.enums import OrderSide as AlpacaOrderSide, PositionIntent as AlpacaPositionIntent, TimeInForce
+
+    cand = create_mock_candidate()
+    plan = build_order_plan(cand, broker_target=BrokerTarget.ALPACA_PAPER)
+
+    legs = [
+        OptionLegRequest(
+            symbol=l.contract_symbol,
+            ratio_qty=l.ratio_qty,
+            side=AlpacaOrderSide.BUY,
+            position_intent=AlpacaPositionIntent.BUY_TO_OPEN,
+        )
+        for l in plan.legs
+    ]
+
+    req = LimitOrderRequest(
+        symbol=plan.symbol,
+        qty=plan.quantity,
+        side=AlpacaOrderSide.BUY,
+        time_in_force=TimeInForce.DAY,
+        limit_price=plan.limit_price,
+        order_class="mleg",
+        legs=legs,
+    )
+
+    dump = req.model_dump()
+    assert dump["limit_price"] == plan.limit_price
+    assert dump["order_class"] == "mleg"
+    assert len(dump["legs"]) == 2
+    assert dump["legs"][0]["position_intent"] == "buy_to_open"

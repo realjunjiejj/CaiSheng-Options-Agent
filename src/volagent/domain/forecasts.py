@@ -13,8 +13,8 @@ class MoveForecast(BaseModel):
     probability_exceeds_implied: float
     implied_move_pct: float
     edge_pct_spot: float
-    uncertainty_buffer_pct_spot: float
-    calibration_confidence: float
+    uncertainty_buffer_pct_spot: float = 0.0025
+    calibration_confidence: float = 0.85
     out_of_distribution: bool = False
     model_version: str = "v1.0"
     feature_snapshot_hash: str = "default_hash"

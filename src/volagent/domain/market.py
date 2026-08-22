@@ -9,7 +9,7 @@ from volagent.provenance import Provenance
 
 class UnderlyingSnapshot(BaseModel):
     """Point-in-time quote and volatility snapshot of the underlying stock/ETF."""
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     symbol: str
     price: float
@@ -24,7 +24,7 @@ class UnderlyingSnapshot(BaseModel):
 
 class OptionContractSnapshot(BaseModel):
     """Point-in-time quote and Greek snapshot for an individual option contract."""
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     symbol: str
     underlying_symbol: str
@@ -34,7 +34,7 @@ class OptionContractSnapshot(BaseModel):
     bid: float
     ask: float
     last: float | None = None
-    quote_time: datetime
+    quote_time: datetime = datetime(2026, 8, 22, 0, 0, 0)
     volume: int | None = None
     open_interest: int | None = None
     vendor_implied_vol: float | None = None

@@ -1,4 +1,4 @@
-"""Long-Vol and Short-Vol Advocates with strict evidence citation integrity."""
+"""Long-Vol and Short-Vol Advocates with strict evidence citation integrity and LLM support."""
 
 from typing import Any
 from volagent.domain.events import EvidenceItem
@@ -15,6 +15,24 @@ def run_long_vol_advocate(
 ) -> VolatilityThesis:
     """Argues the Long Volatility thesis (underpriced jump variance). Rejects hallucinated citations."""
     valid_evidence_ids = [e.evidence_id for e in evidence if e.evidence_id]
+
+    if llm_client is not None:
+        try:
+            prompt_input = (
+                f"Symbol: {symbol}\n"
+                f"Move Forecast: {move_forecast.model_dump_json()}\n"
+                f"IV Forecast: {iv_forecast.model_dump_json()}\n"
+                f"Evidence: {[e.model_dump(mode='json') for e in evidence]}"
+            )
+            structured_llm = llm_client.with_structured_output(VolatilityThesis)
+            res = structured_llm.invoke([
+                {"role": "system", "content": "You are the Long Volatility Advocate. Argue why options underprice jump variance using delta-neutral long straddles. Strictly cite only provided evidence IDs."},
+                {"role": "user", "content": prompt_input},
+            ])
+            res.supporting_evidence_ids = [eid for eid in res.supporting_evidence_ids if eid in valid_evidence_ids]
+            return res
+        except Exception:
+            pass
 
     long_edge = move_forecast.edge_pct_spot
     p_exceed = move_forecast.probability_exceeds_implied
@@ -59,6 +77,24 @@ def run_short_vol_advocate(
 ) -> VolatilityThesis:
     """Argues the Short Volatility thesis (overpriced IV & IV crush harvest). Rejects hallucinated citations."""
     valid_evidence_ids = [e.evidence_id for e in evidence if e.evidence_id]
+
+    if llm_client is not None:
+        try:
+            prompt_input = (
+                f"Symbol: {symbol}\n"
+                f"Move Forecast: {move_forecast.model_dump_json()}\n"
+                f"IV Forecast: {iv_forecast.model_dump_json()}\n"
+                f"Evidence: {[e.model_dump(mode='json') for e in evidence]}"
+            )
+            structured_llm = llm_client.with_structured_output(VolatilityThesis)
+            res = structured_llm.invoke([
+                {"role": "system", "content": "You are the Short Volatility Advocate. Argue why options overprice implied variance using defined-risk short iron butterflies. Strictly cite only provided evidence IDs."},
+                {"role": "user", "content": prompt_input},
+            ])
+            res.supporting_evidence_ids = [eid for eid in res.supporting_evidence_ids if eid in valid_evidence_ids]
+            return res
+        except Exception:
+            pass
 
     short_edge = -move_forecast.edge_pct_spot
     p_subside = 1.0 - move_forecast.probability_exceeds_implied

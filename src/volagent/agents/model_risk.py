@@ -1,10 +1,10 @@
-"""Model-Risk Critic and Track Compliance Guard."""
+"""Model-Risk Critic and Track Compliance Guard with comprehensive directional scan and temporal audit."""
 
 from datetime import datetime, timezone
 from typing import Any
 
 from volagent.domain.enums import GateStatus
-from volagent.domain.events import EarningsEvent
+from volagent.domain.events import EarningsEvent, EvidenceItem
 from volagent.domain.forecasts import MoveForecast
 from volagent.domain.market import OptionContractSnapshot, UnderlyingSnapshot
 from volagent.domain.state import CriticReport, VolatilityThesis
@@ -18,6 +18,10 @@ FORBIDDEN_DIRECTIONAL_TERMS = [
     "stock will go down",
     "directional long",
     "directional short",
+    "upside potential",
+    "downside target",
+    "rally",
+    "dump",
 ]
 
 
@@ -26,7 +30,7 @@ def validate_track_compliance(
     short_thesis: VolatilityThesis | None,
     extra_texts: list[str] | None = None,
 ) -> tuple[bool, list[str]]:
-    """Strictly audit agent texts to prevent directional bias."""
+    """Strictly audit all agent text fields to prevent directional bias."""
     violations = []
     texts_to_check = []
 
@@ -34,11 +38,17 @@ def validate_track_compliance(
         if long_thesis.directional_view != "none":
             violations.append(f"Long-Vol Advocate leaked directional view: {long_thesis.directional_view}")
         texts_to_check.append(long_thesis.thesis.lower())
+        texts_to_check.append(long_thesis.numeric_argument.lower())
+        for inv in long_thesis.invalidation_conditions:
+            texts_to_check.append(inv.lower())
 
     if short_thesis:
         if short_thesis.directional_view != "none":
             violations.append(f"Short-Vol Advocate leaked directional view: {short_thesis.directional_view}")
         texts_to_check.append(short_thesis.thesis.lower())
+        texts_to_check.append(short_thesis.numeric_argument.lower())
+        for inv in short_thesis.invalidation_conditions:
+            texts_to_check.append(inv.lower())
 
     for txt in extra_texts or []:
         texts_to_check.append(txt.lower())
@@ -58,36 +68,55 @@ def run_model_risk_critic(
     move_forecast: MoveForecast,
     long_thesis: VolatilityThesis | None = None,
     short_thesis: VolatilityThesis | None = None,
+    evidence: list[EvidenceItem] | None = None,
     llm_client: Any = None,
 ) -> CriticReport:
     """Independent risk and compliance audit. Can force NO_TRADE."""
     failure_reasons = []
     warnings = []
 
-    # 1. Stale quote audit: check quote age against decision time
+    # 1. Check missing advocate roles (P1-21 Fix)
+    if long_thesis is None or short_thesis is None:
+        failure_reasons.append("Missing required advocate thesis (Long-Vol or Short-Vol agent failed to report).")
+
+    # 2. Stale quote audit: check quote age against decision time
     age_seconds = (event.decision_time - underlying.quote_time).total_seconds()
     stale_data = age_seconds > 1800 or age_seconds < 0
 
     if stale_data:
         failure_reasons.append(f"Stale or invalid market quotes (Age: {age_seconds/60:.1f} minutes).")
 
-    # 2. Temporal leakage: ensure quote time is prior to event time
+    # 3. Temporal leakage: ensure quote & evidence times are prior to event / decision time (P1-19 Fix)
     temporal_leakage = (underlying.quote_time > event.event_time) or any(c.quote_time > event.event_time for c in option_chain)
-    if temporal_leakage:
-        failure_reasons.append("Temporal leakage detected: Market quotes observed after event start time.")
+    if evidence:
+        for ev in evidence:
+            ev_time = ev.observed_at or (ev.provenance.observed_at if ev.provenance else None)
+            if ev_time and ev_time > event.decision_time:
+                temporal_leakage = True
+                failure_reasons.append(f"Temporal leakage in evidence: {ev.evidence_id} observed at {ev_time.isoformat()} after decision time.")
 
-    # 3. Chain Liquidity audit
+    if temporal_leakage:
+        failure_reasons.append("Temporal leakage detected: Market quotes or evidence observed after event start time.")
+
+    # 4. Chain Liquidity audit
     if len(option_chain) < 2:
         failure_reasons.append("Insufficient liquid options chain available for strategy construction.")
 
-    # 4. Out-of-Distribution audit
+    # 5. Out-of-Distribution audit
     if move_forecast.out_of_distribution:
         failure_reasons.append("Quantitative forecast feature vector flagged as Out-Of-Distribution.")
 
-    # 5. Track 02 Compliance Audit
+    # 6. Track 02 Compliance Audit (P1-20 Fix)
     compliant, dir_violations = validate_track_compliance(long_thesis, short_thesis)
     if not compliant:
         failure_reasons.extend(dir_violations)
+
+    # 7. Model Disagreement Metric (P1-22 Fix)
+    excessive_disagreement = False
+    if long_thesis and short_thesis:
+        if long_thesis.confidence >= 0.80 and short_thesis.confidence >= 0.80:
+            excessive_disagreement = True
+            warnings.append("High model disagreement: Both Long and Short advocates claim >= 80% confidence.")
 
     status = GateStatus.FAIL if failure_reasons else GateStatus.PASS
     rec = "force_no_trade" if failure_reasons else "continue"
@@ -97,7 +126,7 @@ def run_model_risk_critic(
         directional_leakage_detected=not compliant,
         temporal_leakage_detected=temporal_leakage,
         stale_data_detected=stale_data,
-        excessive_model_disagreement=False,
+        excessive_model_disagreement=excessive_disagreement,
         unsupported_claim_ids=[],
         failure_reasons=failure_reasons,
         warnings=warnings,

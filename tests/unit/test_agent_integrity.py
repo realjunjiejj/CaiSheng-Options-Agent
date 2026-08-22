@@ -1,84 +1,113 @@
-"""Unit tests for agent citation integrity and directional compliance."""
+"""Unit tests for agent citation integrity, mock LLM injection, and directional compliance."""
 
-from datetime import datetime, timezone
-from volagent.agents.long_vol import run_long_vol_advocate
-from volagent.agents.model_risk import validate_track_compliance
-from volagent.domain.enums import DataMode
-from volagent.domain.events import EvidenceItem
+from datetime import date, datetime, timezone
+from unittest.mock import MagicMock
+import pytest
+
+from volagent.agents.event_magnitude import run_event_magnitude_agent
+from volagent.agents.long_vol import run_long_vol_advocate, run_short_vol_advocate
+from volagent.agents.model_risk import run_model_risk_critic, validate_track_compliance
+from volagent.domain.enums import DataMode, EventTiming, GateStatus
+from volagent.domain.events import EarningsEvent, EvidenceItem
 from volagent.domain.forecasts import IVCrushForecast, MoveForecast
-from volagent.domain.state import VolatilityThesis
+from volagent.domain.market import OptionContractSnapshot, UnderlyingSnapshot
+from volagent.domain.state import EventMagnitudeAssessment, VolatilityThesis
 from volagent.provenance import Provenance
 
 
-def test_hallucinated_evidence_id_rejected():
-    """Verify AG-05: Advocates strictly cite only provided evidence IDs and never invent IDs."""
+def test_llm_hallucinated_evidence_id_rejected():
+    """P0-15 Fix: Injected LLM returning hallucinated ID is sanitized and hallucinated ID is stripped."""
     now = datetime.now(timezone.utc)
-    prov = Provenance(source_name="t", source_uri="t", retrieved_at=now, observed_at=now, content_hash="h", data_mode=DataMode.REPLAY_SYNTHETIC)
-    
+    prov = Provenance.from_synthetic("t")
     evidence = [
         EvidenceItem(
-            evidence_id="NVDA-EV-01",
-            category="guidance_uncertainty",
-            claim="Guidance dispersion high",
-            magnitude_relevance="High variance",
-            numeric_value=0.8,
-            units="index",
-            confidence=0.9,
-            provenance=prov,
+            evidence_id="EVID-VALID-01",
+            source_type="sec_filing_10q",
+            source_uri="file://test",
+            observed_at=now,
+            metric_name="jump",
+            numeric_value=0.1,
+            summary="Valid filing",
         )
     ]
 
-    fc = MoveForecast(
-        median_abs_move_pct=0.087,
-        q20_abs_move_pct=0.065,
-        q80_abs_move_pct=0.112,
-        implied_move_pct=0.078,
-        edge_pct_spot=0.009,
-        uncertainty_buffer_pct_spot=0.0025,
-        probability_exceeds_implied=0.58,
-        calibration_confidence=0.85,
-        out_of_distribution=False,
+    event = EarningsEvent(
+        event_id="EV-1",
+        symbol="NVDA",
+        fiscal_quarter="Q2",
+        event_time=now,
+        timing=EventTiming.AFTER_MARKET_CLOSE,
+        confirmed=True,
+        decision_time=now,
+        exit_time=now,
+        provenance=prov,
     )
 
-    iv_fc = IVCrushForecast(
-        median_iv_change_points=-15.0,
-        q20_iv_change_points=-22.0,
-        q80_iv_change_points=-8.0,
-        confidence=0.82,
+    # Mock LLM that hallucinates "HALLUCINATED-ID-999"
+    mock_llm = MagicMock()
+    mock_structured = MagicMock()
+    mock_structured.invoke.return_value = EventMagnitudeAssessment(
+        directional_view="none",
+        event_novelty_score=0.8,
+        guidance_uncertainty_score=0.7,
+        analyst_dispersion_score=0.6,
+        magnitude_pressure_score=0.7,
+        confidence=0.85,
+        supporting_evidence_ids=["EVID-VALID-01", "HALLUCINATED-ID-999"],  # Injected hallucination
+        summary="LLM Summary",
+        missing_information=[],
     )
+    mock_llm.with_structured_output.return_value = mock_structured
 
-    thesis = run_long_vol_advocate("NVDA", fc, iv_fc, evidence)
+    res = run_event_magnitude_agent(event, evidence, llm_client=mock_llm)
 
-    assert "EVID-DEFAULT" not in thesis.supporting_evidence_ids
-    assert thesis.supporting_evidence_ids == ["NVDA-EV-01"]
+    assert "HALLUCINATED-ID-999" not in res.supporting_evidence_ids
+    assert res.supporting_evidence_ids == ["EVID-VALID-01"]
 
 
-def test_directional_leakage_audit_across_all_text():
-    """Verify AG-17: Critic detects forbidden directional phrasing."""
-    clean_thesis = VolatilityThesis(
+def test_directional_leakage_scans_every_text_field():
+    """P1-20 Fix: Directional leakage scan checks numeric_argument and invalidation conditions."""
+    thesis_with_leaked_num_arg = VolatilityThesis(
         side="long_vol",
         directional_view="none",
-        thesis="Volatility is underpriced, buy long straddle.",
-        numeric_argument="Edge +0.88%",
+        thesis="Delta-neutral straddle structure",
+        numeric_argument="The stock will go up strongly after earnings",  # Leaked directional claim
         supporting_evidence_ids=["E1"],
         invalidation_conditions=[],
         confidence=0.8,
     )
 
-    leaked_thesis = VolatilityThesis(
-        side="long_vol",
-        directional_view="none",
-        thesis="Stock is extremely bullish, expect upside rally.",
-        numeric_argument="Edge +0.88%",
-        supporting_evidence_ids=["E1"],
-        invalidation_conditions=[],
-        confidence=0.8,
-    )
+    compliant, violations = validate_track_compliance(thesis_with_leaked_num_arg, None)
+    assert compliant is False
+    assert any("Forbidden directional term detected" in v for v in violations)
 
-    compliant, violations = validate_track_compliance(clean_thesis, clean_thesis)
-    assert compliant is True
-    assert len(violations) == 0
 
-    non_compliant, violations_bad = validate_track_compliance(leaked_thesis, clean_thesis)
-    assert non_compliant is False
-    assert any("bullish" in v for v in violations_bad)
+def test_missing_advocate_or_critic_fails_closed():
+    """P1-21 Fix: Missing advocate role causes critic to fail closed with force_no_trade."""
+    now = datetime(2024, 8, 28, 20, 0, 0, tzinfo=timezone.utc)
+    prov = Provenance.from_synthetic("t")
+    underlying = UnderlyingSnapshot(symbol="NVDA", price=100.0, bid=99.9, ask=100.1, quote_time=now, previous_close=99.0, realized_vol_10d=0.5, realized_vol_30d=0.5, provenance=prov)
+    event = EarningsEvent(event_id="EV1", symbol="NVDA", fiscal_quarter="Q2", event_time=now, timing=EventTiming.AFTER_MARKET_CLOSE, confirmed=True, decision_time=now, exit_time=now, provenance=prov)
+    fc = MoveForecast(median_abs_move_pct=0.08, q20_abs_move_pct=0.05, q80_abs_move_pct=0.11, implied_move_pct=0.07, edge_pct_spot=0.01, probability_exceeds_implied=0.6, calibration_confidence=0.85, out_of_distribution=False)
+
+    # Missing both long and short theses
+    report = run_model_risk_critic(underlying, event, [], fc, long_thesis=None, short_thesis=None)
+    assert report.status == GateStatus.FAIL
+    assert report.recommendation == "force_no_trade"
+    assert any("Missing required advocate thesis" in r for r in report.failure_reasons)
+
+
+def test_high_confidence_thesis_conflict_sets_disagreement():
+    """P1-22 Fix: When both advocates claim >= 80% confidence on opposite theses, disagreement is flagged."""
+    now = datetime(2024, 8, 28, 20, 0, 0, tzinfo=timezone.utc)
+    prov = Provenance.from_synthetic("t")
+    underlying = UnderlyingSnapshot(symbol="NVDA", price=100.0, bid=99.9, ask=100.1, quote_time=now, previous_close=99.0, realized_vol_10d=0.5, realized_vol_30d=0.5, provenance=prov)
+    event = EarningsEvent(event_id="EV1", symbol="NVDA", fiscal_quarter="Q2", event_time=now, timing=EventTiming.AFTER_MARKET_CLOSE, confirmed=True, decision_time=now, exit_time=now, provenance=prov)
+    opt = OptionContractSnapshot(symbol="C100", underlying_symbol="NVDA", option_type="call", strike=100.0, expiration=date(2024, 9, 6), bid=3.0, ask=3.2, bid_size=10, ask_size=10, quote_time=now, provenance=prov)
+    fc = MoveForecast(median_abs_move_pct=0.08, q20_abs_move_pct=0.05, q80_abs_move_pct=0.11, implied_move_pct=0.07, edge_pct_spot=0.01, probability_exceeds_implied=0.6, calibration_confidence=0.85, out_of_distribution=False)
+
+    long_th = VolatilityThesis(side="long_vol", directional_view="none", thesis="Long vol edge", numeric_argument="Edge +1%", supporting_evidence_ids=[], invalidation_conditions=[], confidence=0.85)
+    short_th = VolatilityThesis(side="short_vol", directional_view="none", thesis="Short vol edge", numeric_argument="Edge +1%", supporting_evidence_ids=[], invalidation_conditions=[], confidence=0.85)
+
+    report = run_model_risk_critic(underlying, event, [opt, opt], fc, long_thesis=long_th, short_thesis=short_th)
+    assert report.excessive_model_disagreement is True

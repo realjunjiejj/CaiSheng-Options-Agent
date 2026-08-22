@@ -16,6 +16,10 @@ def render_analyze_page() -> None:
     replay_mgr = ReplayDataManager()
     scenarios = replay_mgr.get_featured_scenarios()
 
+    if not scenarios:
+        st.warning("No scenarios found in replay dataset.")
+        return
+
     col1, col2 = st.columns([2, 1])
 
     with col1:
@@ -24,14 +28,10 @@ def render_analyze_page() -> None:
         selected_scenario = scenario_options[selected_name]
 
     with col2:
-        mode_badge = (
-            '<span class="badge-replay">REPLAY — REAL</span>'
-            if selected_scenario["mode"] == DataMode.REPLAY_REAL
-            else '<span class="badge-synthetic">SYNTHETIC FAILURE</span>'
-        )
+        mode_badge = '<span class="badge-synthetic">SYNTHETIC ARCHETYPE</span>'
         st.markdown(f"**Data Mode:** {mode_badge}", unsafe_allow_html=True)
         st.markdown(f"**Target Ticker:** `{selected_scenario['symbol']}`")
-        st.markdown(f"**Event Time:** `{selected_scenario['event_time']}`")
+        st.markdown(f"**Scenario ID:** `{selected_scenario['scenario_id']}`")
 
     st.markdown("---")
 
@@ -43,7 +43,7 @@ def render_analyze_page() -> None:
         risk_pct = st.selectbox("Risk Budget (% NAV)", [0.005, 0.01], format_func=lambda x: f"{x*100:.1f}% (Hard Cap: 1.0%)")
     with c3:
         st.markdown("<br>", unsafe_allow_html=True)
-        run_btn = st.button("🚀 Run VolAgent Multi-Agent Analysis", type="primary", use_container_width=True)
+        run_btn = st.button("🚀 Run VolAgent Multi-Agent Analysis", type="primary", width="stretch")
 
     if run_btn:
         config = load_config()
@@ -53,19 +53,19 @@ def render_analyze_page() -> None:
         with progress_container:
             st.info("⚙️ Initializing LangGraph Multi-Agent Pipeline...")
             p_bar = st.progress(10)
-            time.sleep(0.2)
+            time.sleep(0.1)
 
             st.write("📊 **Node 1/4:** Fetching Snapshot & Running Parallel Analysis (`EventMagnitudeAgent` ∥ `VolatilityQuantEngine`)...")
             p_bar.progress(35)
-            time.sleep(0.2)
+            time.sleep(0.1)
 
             st.write("⚔️ **Node 2/4:** Synthesizing Dialectical Volatility Debate (`LongVolAdvocate` ∥ `ShortVolAdvocate`)...")
             p_bar.progress(60)
-            time.sleep(0.2)
+            time.sleep(0.1)
 
             st.write("🛡️ **Node 3/4:** Independent Audit (`ModelRiskCritic` & `TrackComplianceGuard`)...")
             p_bar.progress(80)
-            time.sleep(0.2)
+            time.sleep(0.1)
 
             st.write("📐 **Node 4/4:** Monte Carlo Strategy Repricing & 20-Point Deterministic Risk Gate...")
             workflow = VolAgentWorkflow(config=config)

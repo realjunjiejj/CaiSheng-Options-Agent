@@ -49,28 +49,28 @@ def render_audit_page() -> None:
     st.markdown("### 📄 Immutable Decision Receipt (`decision_receipt.json`)")
     if "last_run_result" in st.session_state:
         res = st.session_state["last_run_result"]
-        cand = res.get("selected_candidate")
+        cand = res.get("approved_candidate") or res.get("audit_proposal")
         receipt_data = {
             "schema_version": "1.0",
             "run_id": res.get("run_id"),
-            "symbol": res["underlying"].symbol,
-            "event": res["event"].model_dump(mode="json"),
-            "underlying": res["underlying"].model_dump(mode="json"),
-            "move_forecast": res["move_forecast"].model_dump(mode="json"),
-            "iv_forecast": res["iv_forecast"].model_dump(mode="json"),
-            "long_vol_thesis": res["long_vol_thesis"].model_dump(mode="json"),
-            "short_vol_thesis": res["short_vol_thesis"].model_dump(mode="json"),
-            "critic_report": res["critic_report"].model_dump(mode="json"),
+            "symbol": res["underlying"].symbol if res.get("underlying") else "UNKNOWN",
+            "event": res["event"].model_dump(mode="json") if res.get("event") else None,
+            "underlying": res["underlying"].model_dump(mode="json") if res.get("underlying") else None,
+            "move_forecast": res["move_forecast"].model_dump(mode="json") if res.get("move_forecast") else None,
+            "iv_forecast": res["iv_forecast"].model_dump(mode="json") if res.get("iv_forecast") else None,
+            "long_vol_thesis": res["long_vol_thesis"].model_dump(mode="json") if res.get("long_vol_thesis") else None,
+            "short_vol_thesis": res["short_vol_thesis"].model_dump(mode="json") if res.get("short_vol_thesis") else None,
+            "critic_report": res["critic_report"].model_dump(mode="json") if res.get("critic_report") else None,
             "decision": cand.decision.value if cand else "no_trade",
             "selected_strategy": cand.model_dump(mode="json") if cand else None,
-            "risk_report": res["risk_report"].model_dump(mode="json"),
+            "risk_report": res["risk_report"].model_dump(mode="json") if res.get("risk_report") else None,
             "rejection_reasons": res.get("rejection_reasons", []),
             "trace_events": res.get("trace_events", []),
         }
 
         receipt_str = json.dumps(receipt_data, indent=2, default=str)
         st.download_button(
-            label="💾 Download Signed Decision Receipt JSON",
+            label="💾 Download Decision Receipt JSON",
             data=receipt_str,
             file_name=f"decision_receipt_{res.get('run_id')}.json",
             mime="application/json",

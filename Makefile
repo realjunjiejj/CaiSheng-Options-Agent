@@ -1,22 +1,26 @@
+PYTHON ?= $(shell which python3 || which python)
+PYTEST ?= $(shell if [ -f .venv/bin/pytest ]; then echo .venv/bin/pytest; else which pytest; fi)
+
 .PHONY: install test test-fast demo cli-nvda cli-tsla cli-aapl
 
 install:
-	uv pip install --python .venv/bin/python -r requirements.txt
+	pip install -e .
+	pip install -r requirements.txt
 
 test:
-	.venv/bin/pytest -v tests/
+	$(PYTEST) -v tests/
 
 test-fast:
-	.venv/bin/pytest -q tests/
+	$(PYTEST) -q tests/
 
 demo:
-	.venv/bin/streamlit run app.py
+	streamlit run app.py
 
 cli-nvda:
-	.venv/bin/python cli.py --symbol NVDA
+	python cli.py --symbol NVDA
 
 cli-tsla:
-	.venv/bin/python cli.py --symbol TSLA
+	python cli.py --symbol TSLA
 
 cli-aapl:
-	.venv/bin/python cli.py --symbol AAPL
+	python cli.py --symbol AAPL

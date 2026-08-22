@@ -1,4 +1,4 @@
-"""LangGraph graph node implementations with strict trust boundaries."""
+"""LangGraph graph node implementations with strict trust boundaries and fail-closed routing."""
 
 from datetime import datetime, timezone
 import uuid
@@ -6,10 +6,11 @@ from typing import Any
 
 from volagent.agents.event_magnitude import run_event_magnitude_agent
 from volagent.agents.long_vol import run_long_vol_advocate, run_short_vol_advocate
-from volagent.agents.model_risk import run_model_risk_critic, validate_track_compliance
+from volagent.agents.model_risk import run_model_risk_critic
 from volagent.config import VolAgentSettings
 from volagent.data.replay import ReplayDataManager
 from volagent.domain.enums import AbstentionReason, DataMode, Decision, GateStatus, RunStatus
+from volagent.domain.forecasts import IVCrushForecast, MoveForecast
 from volagent.domain.state import VolAgentState
 from volagent.quant.expected_move import compute_implied_move
 from volagent.quant.features import build_quantitative_features
@@ -52,26 +53,31 @@ def fetch_market_snapshot(state: VolAgentState, agent_settings: VolAgentSettings
     replay_mgr = ReplayDataManager()
     scenario_data = replay_mgr.load_scenario(scenario_id)
 
+    evidence = scenario_data.get("evidence_items") or scenario_data.get("evidence", [])
+
     return {
         "underlying": scenario_data["underlying"],
         "event": scenario_data["event"],
         "option_chain": scenario_data["option_chain"],
-        "evidence": scenario_data["evidence"],
-        "feature_set": {"historical_moves": scenario_data["historical_moves"]},
-        "artifact_hashes": {"scenario_file": scenario_data["artifact_hash"]},
+        "evidence": evidence,
+        "feature_set": {"historical_moves": scenario_data.get("historical_moves", [0.08, 0.05, 0.12, 0.06])},
+        "artifact_hashes": {"scenario_file": scenario_data.get("file_hash", "")},
         "trace_events": [{
             "node": "fetch_market_snapshot",
             "status": "completed",
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "summary": f"Fetched {len(scenario_data['option_chain'])} option quotes and {len(scenario_data['evidence'])} evidence items",
+            "summary": f"Fetched {len(scenario_data['option_chain'])} option quotes and {len(evidence)} evidence items",
         }],
     }
 
 
 def event_magnitude_node(state: VolAgentState, agent_settings: VolAgentSettings, llm_client: Any = None) -> dict[str, Any]:
     """Run Event Magnitude Agent in parallel with Vol Quant."""
-    event = state["event"]
+    event = state.get("event")
     evidence = state.get("evidence", [])
+
+    if not event:
+        return {}
 
     assessment = run_event_magnitude_agent(event, evidence, llm_client=llm_client)
 
@@ -87,16 +93,17 @@ def event_magnitude_node(state: VolAgentState, agent_settings: VolAgentSettings,
 
 
 def volatility_quant_node(state: VolAgentState, agent_settings: VolAgentSettings) -> dict[str, Any]:
-    """Run deterministic volatility surface calculations."""
-    underlying = state["underlying"]
-    event = state["event"]
-    chain = state["option_chain"]
+    """Run deterministic volatility surface calculations with fail-closed safety."""
+    underlying = state.get("underlying")
+    event = state.get("event")
+    chain = state.get("option_chain", [])
 
-    if not chain:
+    if not chain or not underlying or not event:
         return {
             "final_decision": Decision.NO_TRADE,
             "abstention_reason": AbstentionReason.DATA_QUALITY,
-            "rejection_reasons": ["Empty options chain provided"],
+            "rejection_reasons": ["Empty options chain or missing market data provided"],
+            "feature_set": {"implied_metrics": None},
         }
 
     # Expiration selection
@@ -141,18 +148,38 @@ def volatility_quant_node(state: VolAgentState, agent_settings: VolAgentSettings
 
 
 def forecast_node(state: VolAgentState, agent_settings: VolAgentSettings) -> dict[str, Any]:
-    """Compute deterministic movement and IV crush forecasts."""
-    feat_dict = state["feature_set"]
+    """Compute deterministic movement and IV crush forecasts with fail-closed safety."""
+    feat_dict = state.get("feature_set", {})
     implied_metrics = feat_dict.get("implied_metrics")
-    underlying = state["underlying"]
-    event = state["event"]
+    underlying = state.get("underlying")
+    event = state.get("event")
     event_assessment = state.get("event_assessment")
 
-    if implied_metrics is None:
+    if implied_metrics is None or underlying is None or event is None:
+        # P0-16 Fix: Safe fallback forecast for fail-closed path
+        fallback_move = MoveForecast(
+            median_abs_move_pct=0.05,
+            q20_abs_move_pct=0.02,
+            q80_abs_move_pct=0.08,
+            implied_move_pct=0.05,
+            edge_pct_spot=0.0,
+            probability_exceeds_implied=0.50,
+            calibration_confidence=0.50,
+            out_of_distribution=True,
+        )
+        fallback_iv = IVCrushForecast(
+            median_iv_change_points=-15.0,
+            q20_iv_change_points=-25.0,
+            q80_iv_change_points=-5.0,
+            expected_post_event_atm_iv=0.45,
+            calibration_confidence=0.50,
+        )
         return {
             "final_decision": Decision.NO_TRADE,
             "abstention_reason": AbstentionReason.DATA_QUALITY,
             "rejection_reasons": ["Missing ATM implied move metrics"],
+            "move_forecast": fallback_move,
+            "iv_forecast": fallback_iv,
         }
 
     features = build_quantitative_features(
@@ -184,12 +211,15 @@ def forecast_node(state: VolAgentState, agent_settings: VolAgentSettings) -> dic
 
 def long_vol_node(state: VolAgentState, agent_settings: VolAgentSettings, llm_client: Any = None) -> dict[str, Any]:
     """Run Long-Vol Advocate in parallel branch."""
-    symbol = state["underlying"].symbol
-    move_fc = state["move_forecast"]
-    iv_fc = state["iv_forecast"]
+    underlying = state.get("underlying")
+    move_fc = state.get("move_forecast")
+    iv_fc = state.get("iv_forecast")
     evidence = state.get("evidence", [])
 
-    long_thesis = run_long_vol_advocate(symbol, move_fc, iv_fc, evidence, llm_client=llm_client)
+    if not underlying or not move_fc or not iv_fc:
+        return {}
+
+    long_thesis = run_long_vol_advocate(underlying.symbol, move_fc, iv_fc, evidence, llm_client=llm_client)
 
     return {
         "long_vol_thesis": long_thesis,
@@ -204,12 +234,15 @@ def long_vol_node(state: VolAgentState, agent_settings: VolAgentSettings, llm_cl
 
 def short_vol_node(state: VolAgentState, agent_settings: VolAgentSettings, llm_client: Any = None) -> dict[str, Any]:
     """Run Short-Vol Advocate in parallel branch."""
-    symbol = state["underlying"].symbol
-    move_fc = state["move_forecast"]
-    iv_fc = state["iv_forecast"]
+    underlying = state.get("underlying")
+    move_fc = state.get("move_forecast")
+    iv_fc = state.get("iv_forecast")
     evidence = state.get("evidence", [])
 
-    short_thesis = run_short_vol_advocate(symbol, move_fc, iv_fc, evidence, llm_client=llm_client)
+    if not underlying or not move_fc or not iv_fc:
+        return {}
+
+    short_thesis = run_short_vol_advocate(underlying.symbol, move_fc, iv_fc, evidence, llm_client=llm_client)
 
     return {
         "short_vol_thesis": short_thesis,
@@ -224,15 +257,36 @@ def short_vol_node(state: VolAgentState, agent_settings: VolAgentSettings, llm_c
 
 def critic_and_compliance_node(state: VolAgentState, agent_settings: VolAgentSettings, llm_client: Any = None) -> dict[str, Any]:
     """Run Model-Risk Critic and Track Compliance Guard."""
-    critic_report = run_model_risk_critic(
-        underlying=state["underlying"],
-        event=state["event"],
-        option_chain=state["option_chain"],
-        move_forecast=state["move_forecast"],
-        long_thesis=state.get("long_vol_thesis"),
-        short_thesis=state.get("short_vol_thesis"),
-        llm_client=llm_client,
-    )
+    underlying = state.get("underlying")
+    event = state.get("event")
+    chain = state.get("option_chain", [])
+    move_fc = state.get("move_forecast")
+    evidence = state.get("evidence", [])
+
+    if not underlying or not event or not move_fc:
+        from volagent.domain.state import CriticReport
+        critic_report = CriticReport(
+            status=GateStatus.FAIL,
+            directional_leakage_detected=False,
+            temporal_leakage_detected=False,
+            stale_data_detected=True,
+            excessive_model_disagreement=False,
+            unsupported_claim_ids=[],
+            failure_reasons=["Missing underlying, event, or forecast state in critic"],
+            warnings=[],
+            recommendation="force_no_trade",
+        )
+    else:
+        critic_report = run_model_risk_critic(
+            underlying=underlying,
+            event=event,
+            option_chain=chain,
+            move_forecast=move_fc,
+            long_thesis=state.get("long_vol_thesis"),
+            short_thesis=state.get("short_vol_thesis"),
+            evidence=evidence,
+            llm_client=llm_client,
+        )
 
     return {
         "critic_report": critic_report,
@@ -247,17 +301,18 @@ def critic_and_compliance_node(state: VolAgentState, agent_settings: VolAgentSet
 
 def strategy_and_risk_node(state: VolAgentState, agent_settings: VolAgentSettings) -> dict[str, Any]:
     """Construct strategies, reprice with Monte Carlo, select best, and evaluate Risk Gate."""
-    feat = state["feature_set"]
+    feat = state.get("feature_set", {})
     atm_call = feat.get("atm_call")
     atm_put = feat.get("atm_put")
     implied_metrics = feat.get("implied_metrics")
-    spot = state["underlying"].price
-    chain = state["option_chain"]
-    nav = 100_000.0  # Default NAV $100k
+    underlying = state.get("underlying")
+    spot = underlying.price if underlying else 100.0
+    chain = state.get("option_chain", [])
+    nav = 250_000.0  # $250k portfolio NAV
 
     candidates = []
 
-    if atm_call and atm_put:
+    if atm_call and atm_put and "move_forecast" in state and "iv_forecast" in state:
         # 1. Long Straddle
         straddle = build_long_straddle_candidate(atm_call, atm_put, spot, nav, agent_settings.risk)
         straddle = reprice_strategy_monte_carlo(
@@ -297,7 +352,12 @@ def strategy_and_risk_node(state: VolAgentState, agent_settings: VolAgentSetting
         selected_cand = None
         decision = Decision.NO_TRADE
         abstention = AbstentionReason.CRITIC_VETO
-        rejections = critic_report.failure_reasons
+        rejections = list(critic_report.failure_reasons)
+    elif "move_forecast" not in state or not candidates:
+        selected_cand = None
+        decision = Decision.NO_TRADE
+        abstention = state.get("abstention_reason", AbstentionReason.DATA_QUALITY)
+        rejections = state.get("rejection_reasons", ["No strategy candidates constructed"])
     else:
         selected_cand, decision, abstention, rejections = select_best_strategy(
             candidates=candidates,
@@ -307,16 +367,29 @@ def strategy_and_risk_node(state: VolAgentState, agent_settings: VolAgentSetting
         )
 
     # Risk Gate Evaluation
-    risk_report = evaluate_risk_gate(
-        candidate=selected_cand,
-        decision=decision,
-        nav=nav,
-        event=state["event"],
-        move_forecast=state["move_forecast"],
-        critic_report=critic_report,
-        risk_config=agent_settings.risk,
-        abstention_reason=abstention,
-    )
+    event = state.get("event")
+    move_fc = state.get("move_forecast")
+
+    if event and move_fc:
+        risk_report = evaluate_risk_gate(
+            candidate=selected_cand,
+            decision=decision,
+            nav=nav,
+            event=event,
+            move_forecast=move_fc,
+            critic_report=critic_report,
+            risk_config=agent_settings.risk,
+            spot_price=spot,
+            abstention_reason=abstention,
+        )
+    else:
+        from volagent.domain.risk import RiskReport
+        risk_report = RiskReport(
+            overall_status=GateStatus.FAIL,
+            checks=[],
+            approved_quantity=0,
+            rejection_reasons=["Missing event or forecast for risk evaluation"],
+        )
 
     if risk_report.overall_status == GateStatus.FAIL:
         decision = Decision.NO_TRADE

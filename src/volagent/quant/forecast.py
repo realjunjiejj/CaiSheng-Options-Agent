@@ -24,23 +24,22 @@ def compute_shrinkage_forecast(
     n_ticker = len(ticker_moves)
 
     # Weights scaling with available historical observations
-    if n_ticker >= 10:
-        w_t, w_s, w_g = 0.70, 0.20, 0.10
-    elif n_ticker >= 5:
-        w_t, w_s, w_g = 0.50, 0.35, 0.15
+    if n_ticker >= 6:
+        w_t, w_s, w_g = 0.75, 0.18, 0.07
+    elif n_ticker >= 3:
+        w_t, w_s, w_g = 0.55, 0.30, 0.15
     else:
-        w_t, w_s, w_g = 0.30, 0.45, 0.25
+        w_t, w_s, w_g = 0.35, 0.40, 0.25
 
     m_ticker = float(np.median(ticker_moves))
     shrunk_median = w_t * m_ticker + w_s * sector_median_move + w_g * global_median_move
 
-    # Uncertainty dispersion adjustment from event magnitude pressure
+    # Event magnitude pressure shifts expected jump distribution
     mag_pressure = features.get("magnitude_pressure_score", 0.5)
-    dispersion_factor = 0.8 + 0.4 * mag_pressure
-
-    q20 = max(0.01, shrunk_median * 0.65 * dispersion_factor)
-    q50 = shrunk_median
-    q80 = shrunk_median * 1.45 * dispersion_factor
+    magnitude_shift = 0.70 + 0.65 * mag_pressure
+    q50 = shrunk_median * magnitude_shift
+    q20 = max(0.01, q50 * 0.70)
+    q80 = q50 * 1.40
 
     implied_move_pct = features["implied_move_pct"]
     edge_pct_spot = q50 - implied_move_pct
@@ -71,9 +70,9 @@ def compute_shrinkage_forecast(
         feature_snapshot_hash=feature_hash,
     )
 
-    # IV Crush Forecast (historical post-earnings IV drops typically 20-50% of ATM IV)
-    atm_iv = features.get("atm_iv", 0.60)
-    expected_iv_drop_pts = -(atm_iv * 0.30 * 100.0)  # e.g., -18.0 percentage points
+    # IV Crush Forecast (historical post-earnings IV drops typically 50-60% of pre-event IV)
+    atm_iv = features.get("atm_iv", 1.35)
+    expected_iv_drop_pts = -(atm_iv * 0.55 * 100.0)
 
     iv_crush_forecast = IVCrushForecast(
         median_iv_change_points=float(expected_iv_drop_pts),

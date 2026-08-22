@@ -1,6 +1,6 @@
 """Provenance tracking and canonical hashing for VolAgent Alpha."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import json
 from typing import Any
@@ -11,7 +11,7 @@ from volagent.domain.enums import DataMode
 
 class Provenance(BaseModel):
     """Tracks origin, timestamps, and cryptographic hash of external data."""
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     source_name: str
     source_uri: str | None = None
@@ -20,6 +20,18 @@ class Provenance(BaseModel):
     effective_at: datetime | None = None
     content_hash: str
     data_mode: DataMode
+
+    @classmethod
+    def from_synthetic(cls, source_name: str = "synthetic_fixture") -> "Provenance":
+        now = datetime(2026, 8, 22, 0, 0, 0, tzinfo=timezone.utc)
+        return cls(
+            source_name=source_name,
+            source_uri=f"file://data/replay/{source_name}",
+            retrieved_at=now,
+            observed_at=now,
+            content_hash=hashlib.sha256(source_name.encode()).hexdigest(),
+            data_mode=DataMode.REPLAY_SYNTHETIC,
+        )
 
 
 def compute_sha256(content: str | bytes) -> str:

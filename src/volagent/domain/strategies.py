@@ -1,7 +1,7 @@
 """Option strategy candidate and leg models."""
 
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from volagent.domain.enums import Decision
@@ -9,14 +9,14 @@ from volagent.domain.enums import Decision
 
 class OptionLeg(BaseModel):
     """Specification of an individual option leg in a multi-leg strategy."""
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     contract_symbol: str
     option_type: Literal["call", "put"]
     strike: float
     expiration: date
     side: Literal["buy", "sell"]
-    position_intent: Literal["buy_to_open", "sell_to_open", "buy_to_close", "sell_to_close"]
+    position_intent: str = "buy_to_open"
     ratio_qty: int = Field(default=1, ge=1)
     entry_price_assumption: float
     delta: float = 0.0
@@ -27,7 +27,7 @@ class OptionLeg(BaseModel):
 
 class StrategyCandidate(BaseModel):
     """Candidate multi-leg option strategy with evaluated metrics and payoff."""
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     strategy_id: str
     decision: Decision

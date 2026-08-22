@@ -1,11 +1,11 @@
-"""Central configuration management with YAML loading and strict validation."""
+"""Central configuration management with YAML loading, aliases, and environment variables."""
 
 import os
 from pathlib import Path
 from typing import Any
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from volagent.errors import ConfigurationError
 
@@ -35,6 +35,20 @@ class ContractFiltersConfig(BaseModel):
     min_volume: int = Field(ge=0, default=50)
     min_open_interest: int = Field(ge=0, default=100)
     max_quote_age_seconds: int = Field(gt=0, default=1800)
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_yaml_aliases(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if "min_days_after_event" in values and "min_dte_days" not in values:
+                values["min_dte_days"] = values["min_days_after_event"]
+            if "max_days_after_event" in values and "max_dte_days" not in values:
+                values["max_dte_days"] = values["max_days_after_event"]
+            if "min_daily_volume" in values and "min_volume" not in values:
+                values["min_volume"] = values["min_daily_volume"]
+            if "max_relative_spread" in values and "max_relative_spread_pct" not in values:
+                values["max_relative_spread_pct"] = values["max_relative_spread"]
+        return values
 
 
 # Backwards compatibility alias
@@ -73,8 +87,13 @@ class ExecutionConfig(BaseModel):
 
 
 class VolAgentSettings(BaseSettings):
-    """Unified application settings model."""
-    model_config = ConfigDict(extra="ignore", env_prefix="VOLAGENT_")
+    """Unified application settings model supporting .env and flexible env vars."""
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        env_prefix="VOLAGENT_",
+    )
 
     application: ApplicationConfig = Field(default_factory=ApplicationConfig)
     contracts: ContractFiltersConfig = Field(default_factory=ContractFiltersConfig)
@@ -126,6 +145,14 @@ def load_config(config_path: str | Path | None = None) -> VolAgentSettings:
             settings.execution = ExecutionConfig(**data["execution"])
     elif config_path is not None:
         raise ConfigurationError(f"Explicitly specified config file not found: {target_file}")
+
+    # Fallback to direct environment variables without prefix
+    if os.environ.get("DATA_MODE"):
+        settings.volagent_data_mode = os.environ["DATA_MODE"]
+    if os.environ.get("ALPACA_API_KEY"):
+        settings.alpaca_api_key = os.environ["ALPACA_API_KEY"]
+    if os.environ.get("ALPACA_SECRET_KEY"):
+        settings.alpaca_secret_key = os.environ["ALPACA_SECRET_KEY"]
 
     # Enforce kill switch override from env if set
     if os.environ.get("VOLAGENT_ALLOW_ORDER_SUBMISSION"):

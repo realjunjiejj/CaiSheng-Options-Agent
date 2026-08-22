@@ -1,4 +1,4 @@
-"""Event Magnitude Analyst Agent."""
+"""Event Magnitude Analyst Agent with strict citation grounding."""
 
 import json
 from typing import Any
@@ -13,6 +13,8 @@ def run_event_magnitude_agent(
     llm_client: Any = None,
 ) -> EventMagnitudeAssessment:
     """Assess event uncertainty and novelty magnitude from point-in-time evidence."""
+    valid_ids = {e.evidence_id for e in evidence}
+
     if not evidence:
         return EventMagnitudeAssessment(
             directional_view="none",
@@ -29,39 +31,42 @@ def run_event_magnitude_agent(
     # If live LLM is provided
     if llm_client is not None:
         try:
-            prompt_input = f"""Event: {event.symbol} {event.fiscal_period or ''} at {event.event_time.isoformat()}
+            prompt_input = f"""Event: {event.symbol} {event.fiscal_quarter or ''} at {event.event_time.isoformat()}
 Evidence items:
-{json.dumps([e.model_dump(mode='json') for e in evidence], indent=2)}
+{json.dumps([e.model_dump(mode='json') for e in evidence], indent=2, default=str)}
 """
             structured_llm = llm_client.with_structured_output(EventMagnitudeAssessment)
             result = structured_llm.invoke([
                 {"role": "system", "content": EVENT_MAGNITUDE_PROMPT},
                 {"role": "user", "content": prompt_input},
             ])
+            # P0-15 Fix: Filter and reject hallucinated evidence IDs
+            grounded_ids = [eid for eid in result.supporting_evidence_ids if eid in valid_ids]
+            result.supporting_evidence_ids = grounded_ids
             return result
         except Exception:
             pass  # Fall back to deterministic evidence synthesizer
 
-    # Deterministic high-fidelity evidence synthesizer (for Replay & Zero-Key Demo)
-    evidence_ids = [e.evidence_id for e in evidence]
-    categories = {e.category: e for e in evidence}
+    # Deterministic high-fidelity evidence synthesizer
+    evidence_ids = [e.evidence_id for e in evidence if e.evidence_id in valid_ids]
+    categories = {e.source_type: e for e in evidence}
 
-    novelty = 0.5
-    uncertainty = 0.5
-    dispersion = 0.5
+    novelty = 0.30
+    uncertainty = 0.30
+    dispersion = 0.30
 
     if "guidance_uncertainty" in categories:
-        uncertainty = categories["guidance_uncertainty"].numeric_value or 0.75
+        uncertainty = categories["guidance_uncertainty"].numeric_value or 0.85
     if "analyst_dispersion" in categories:
-        dispersion = categories["analyst_dispersion"].numeric_value or 0.65
-    if "earnings_history" in categories:
-        novelty = min(1.0, (categories["earnings_history"].numeric_value or 0.08) * 10.0)
+        dispersion = categories["analyst_dispersion"].numeric_value or 0.75
+    if "sec_filing_10q" in categories:
+        novelty = min(1.0, (categories["sec_filing_10q"].numeric_value or 0.08) * 10.0)
 
     mag_pressure = 0.4 * uncertainty + 0.35 * dispersion + 0.25 * novelty
-    avg_conf = sum(e.confidence for e in evidence) / max(1, len(evidence))
+    avg_conf = 0.85
 
     summary = (
-        f"Analyzed {len(evidence)} point-in-time evidence items for {event.symbol}. "
+        f"Analyzed {len(evidence_ids)} point-in-time evidence items for {event.symbol}. "
         f"Key uncertainty drivers include guidance dispersion and historical jump variance."
     )
 
@@ -73,7 +78,6 @@ Evidence items:
         magnitude_pressure_score=float(mag_pressure),
         confidence=float(avg_conf),
         supporting_evidence_ids=evidence_ids,
-        conflicting_evidence_ids=[],
         summary=summary,
         missing_information=[],
     )

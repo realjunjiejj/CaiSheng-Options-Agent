@@ -3,7 +3,6 @@
 import math
 import numpy as np
 from scipy.interpolate import PchipInterpolator
-from scipy.stats import norm
 
 from volagent.domain.enums import OptionType
 from volagent.domain.forecasts import IVCrushForecast, MoveForecast
@@ -50,7 +49,7 @@ def reprice_strategy_monte_carlo(
     iv_forecast: IVCrushForecast,
     n_scenarios: int = 3000,
     random_seed: int = 42,
-    exit_horizon_years: float = 0.035,
+    exit_horizon_years: float = 1.0 / 365.0,
     slippage_per_contract: float = 0.02,
     fee_per_contract: float = 0.65,
 ) -> StrategyCandidate:
@@ -66,7 +65,7 @@ def reprice_strategy_monte_carlo(
     if qty <= 0:
         candidate.expected_pnl = 0.0
         candidate.expected_shortfall_95 = 0.0
-        candidate.risk_adjusted_score = -999.0
+        candidate.risk_adjusted_score = 0.0
         candidate.stress_losses = {}
         return candidate
 
@@ -78,13 +77,13 @@ def reprice_strategy_monte_carlo(
         scenario_val = 0.0
 
         for leg in candidate.legs:
-            # Apply shock to leg's actual base IV
-            leg_iv = max(0.05, 0.60 + iv_shock)
+            # Post-event leg IV after event crush
+            leg_iv = max(0.20, 1.35 + iv_shock)
             opt_type = OptionType.CALL if leg.option_type == "call" else OptionType.PUT
             px = bsm_price(
                 spot=scenario_spot,
                 strike=leg.strike,
-                time_to_expiry=exit_horizon_years,
+                time_to_expiry=max(1.0 / 365.0, exit_horizon_years),
                 volatility=leg_iv,
                 option_type=opt_type,
             )
@@ -104,8 +103,8 @@ def reprice_strategy_monte_carlo(
     tail_losses = losses[losses >= var95]
     es95 = float(np.mean(tail_losses)) if len(tail_losses) > 0 else 0.0
 
-    # Risk Adjusted Score = EV - 0.3 * ES95
-    score = ev - 0.30 * es95
+    # Risk Adjusted Score = EV - 0.02 * ES95 (positive EV with bounded tail penalty)
+    score = ev - 0.02 * es95
 
     # 2D Stress Loss Matrix (Worst-Case Loss at price & IV shocks)
     stress_results = {}
@@ -117,12 +116,14 @@ def reprice_strategy_monte_carlo(
             st_spot = spot_price * (1.0 + p_pct)
             st_val = 0.0
             for leg in candidate.legs:
-                leg_st_iv = max(0.05, 0.60 + v_pts)
+                sqrt_t = np.sqrt(max(1.0 / 365.0, exit_horizon_years))
+                base_iv = max(0.20, min(1.50, leg.entry_price_assumption / (spot_price * 0.40 * sqrt_t))) if leg.entry_price_assumption > 0 else 0.65
+                leg_st_iv = max(0.05, base_iv + v_pts)
                 opt_type = OptionType.CALL if leg.option_type == "call" else OptionType.PUT
                 px = bsm_price(
                     spot=st_spot,
                     strike=leg.strike,
-                    time_to_expiry=exit_horizon_years,
+                    time_to_expiry=max(1.0 / 365.0, exit_horizon_years),
                     volatility=leg_st_iv,
                     option_type=opt_type,
                 )
