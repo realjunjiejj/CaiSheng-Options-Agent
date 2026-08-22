@@ -1,0 +1,48 @@
+application:
+  name: VolAgent Alpha (Demo)
+  timezone: America/New_York
+  random_seed: 20260822
+  max_graph_runtime_seconds: 45
+  llm_timeout_seconds: 15
+  llm_retries: 1
+  cache_ttl_seconds: 300
+
+universe:
+  symbols: [AAPL, AMD, AMZN, GOOGL, META, MSFT, NFLX, NVDA, TSLA]
+  require_after_market_close_event: true
+
+contracts:
+  min_days_after_event: 2
+  max_days_after_event: 14
+  min_open_interest: 100
+  min_daily_volume: 10
+  min_mid_price: 0.10
+  max_relative_spread: 0.15
+  max_quote_age_seconds: 60
+  max_atm_distance_pct: 0.03
+
+forecast:
+  quantiles: [0.20, 0.50, 0.80]
+  min_training_events: 20
+  min_ticker_events_for_ticker_component: 4
+  monte_carlo_scenarios: 3000
+  confidence_floor: 0.60
+  edge_buffer_pct_spot: 0.0025
+
+risk:
+  recommended_risk_nav_pct: 0.005
+  hard_max_risk_nav_pct: 0.01
+  max_abs_dollar_delta_nav_pct: 0.02
+  max_stress_loss_nav_pct: 0.01
+  max_contracts: 10
+  require_defined_risk_for_short_vol: true
+  reject_dividend_before_expiry: true
+
+execution:
+  paper_only: true
+  require_human_approval: true
+  order_type: limit
+  time_in_force: day
+  limit_improvement_fraction: 0.25
+  fee_per_contract: 0.05
+  slippage_per_contract: 0.02

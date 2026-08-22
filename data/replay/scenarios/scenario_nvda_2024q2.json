@@ -1,0 +1,55 @@
+{
+  "scenario_id": "SCENARIO-NVDA-2024Q2-AMC",
+  "name": "NVDA Q2 Earnings (Synthetic Long Vol Archetype)",
+  "mode": "replay_synthetic",
+  "symbol": "NVDA",
+  "decision_inputs": {
+    "underlying": {
+      "symbol": "NVDA",
+      "price": 125.50,
+      "bid": 125.45,
+      "ask": 125.55,
+      "quote_time": "2024-08-28T19:45:00Z",
+      "previous_close": 124.20,
+      "realized_vol_10d": 0.55,
+      "realized_vol_30d": 0.58
+    },
+    "event": {
+      "event_id": "NVDA-2024Q2",
+      "symbol": "NVDA",
+      "fiscal_period": "Q2 2024",
+      "event_time": "2024-08-28T20:00:00Z",
+      "timing": "amc",
+      "confirmed": true,
+      "decision_time": "2024-08-28T19:45:00Z",
+      "exit_time": "2024-08-29T14:00:00Z"
+    },
+    "historical_moves": [0.098, 0.142, 0.089, 0.086, 0.112, 0.094, 0.096, 0.105, 0.092, 0.095],
+    "evidence": [
+      {
+        "evidence_id": "NVDA-EV-01",
+        "category": "guidance_uncertainty",
+        "claim": "Blackwell chip architecture production ramp timing remains a key uncertainty in management commentary.",
+        "magnitude_relevance": "High event uncertainty; large variance dispersion expected.",
+        "numeric_value": 0.85,
+        "units": "index",
+        "confidence": 0.90
+      },
+      {
+        "evidence_id": "NVDA-EV-02",
+        "category": "analyst_dispersion",
+        "claim": "Analyst EPS consensus estimates range from $0.58 to $0.72 (24% dispersion spread).",
+        "magnitude_relevance": "High dispersion indicates market lack of consensus on data center gross margins.",
+        "numeric_value": 0.24,
+        "units": "spread_pct",
+        "confidence": 0.95
+      }
+    ]
+  },
+  "sealed_outcomes": {
+    "exit_spot": 117.50,
+    "exit_time": "2024-08-29T14:00:00Z",
+    "realized_abs_move_pct": 0.0637,
+    "post_event_atm_iv": 0.48
+  }
+}

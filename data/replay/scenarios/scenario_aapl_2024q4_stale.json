@@ -1,0 +1,46 @@
+{
+  "scenario_id": "SCENARIO-AAPL-2024Q4-STALE",
+  "name": "AAPL Q4 Earnings (Synthetic Stale Quote Archetype)",
+  "mode": "replay_synthetic",
+  "symbol": "AAPL",
+  "decision_inputs": {
+    "underlying": {
+      "symbol": "AAPL",
+      "price": 225.00,
+      "bid": 224.95,
+      "ask": 225.05,
+      "quote_time": "2024-10-31T18:00:00Z",
+      "previous_close": 223.00,
+      "realized_vol_10d": 0.22,
+      "realized_vol_30d": 0.25
+    },
+    "event": {
+      "event_id": "AAPL-2024Q4-STALE",
+      "symbol": "AAPL",
+      "fiscal_period": "Q4 2024",
+      "event_time": "2024-10-31T20:00:00Z",
+      "timing": "amc",
+      "confirmed": true,
+      "decision_time": "2024-10-31T19:45:00Z",
+      "exit_time": "2024-11-01T14:00:00Z"
+    },
+    "historical_moves": [0.035, 0.041, 0.038, 0.044],
+    "evidence": [
+      {
+        "evidence_id": "AAPL-EV-01",
+        "category": "market_data",
+        "claim": "Quote feed delayed due to venue connectivity outage during pre-earnings window.",
+        "magnitude_relevance": "Stale quote safety invariant must reject trade.",
+        "numeric_value": 0.0,
+        "units": "flag",
+        "confidence": 1.0
+      }
+    ]
+  },
+  "sealed_outcomes": {
+    "exit_spot": 226.50,
+    "exit_time": "2024-11-01T14:00:00Z",
+    "realized_abs_move_pct": 0.0066,
+    "post_event_atm_iv": 0.28
+  }
+}

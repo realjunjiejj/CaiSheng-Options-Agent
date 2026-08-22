@@ -1,0 +1,46 @@
+{
+  "scenario_id": "SCENARIO-TSLA-2024Q3-AMC",
+  "name": "TSLA Q3 Earnings (Synthetic Short Vol Archetype)",
+  "mode": "replay_synthetic",
+  "symbol": "TSLA",
+  "decision_inputs": {
+    "underlying": {
+      "symbol": "TSLA",
+      "price": 215.00,
+      "bid": 214.90,
+      "ask": 215.10,
+      "quote_time": "2024-10-23T19:45:00Z",
+      "previous_close": 213.50,
+      "realized_vol_10d": 0.42,
+      "realized_vol_30d": 0.45
+    },
+    "event": {
+      "event_id": "TSLA-2024Q3",
+      "symbol": "TSLA",
+      "fiscal_period": "Q3 2024",
+      "event_time": "2024-10-23T20:00:00Z",
+      "timing": "amc",
+      "confirmed": true,
+      "decision_time": "2024-10-23T19:45:00Z",
+      "exit_time": "2024-10-24T14:00:00Z"
+    },
+    "historical_moves": [0.051, 0.062, 0.048, 0.059, 0.055, 0.072],
+    "evidence": [
+      {
+        "evidence_id": "TSLA-EV-01",
+        "category": "option_surface",
+        "claim": "Options market is pricing an implied move of 10.3%, in the 92nd percentile of historical implied moves.",
+        "magnitude_relevance": "Implied volatility reflects extreme event markup compared to 30-day realized volatility of 45%.",
+        "numeric_value": 0.103,
+        "units": "implied_move_pct",
+        "confidence": 0.95
+      }
+    ]
+  },
+  "sealed_outcomes": {
+    "exit_spot": 218.20,
+    "exit_time": "2024-10-24T14:00:00Z",
+    "realized_abs_move_pct": 0.0148,
+    "post_event_atm_iv": 0.52
+  }
+}

@@ -1,0 +1,121 @@
+"""Alpaca Pro Terminal Plotly visualizer for Options Payoff Curves."""
+
+from typing import Any
+import numpy as np
+import plotly.graph_objects as go
+
+from volagent.domain.strategies import StrategyCandidate
+from volagent.quant.payoff import compute_payoff_curves
+from volagent.ui.theme import (
+    ALPACA_CARD,
+    ALPACA_DARK,
+    ALPACA_YELLOW,
+    CYAN_ACCENT,
+    GREEN_PROFIT,
+    PURPLE_VOL,
+    RED_LOSS,
+    TEXT_MUTED,
+    TEXT_PRIMARY,
+)
+
+
+def create_payoff_plot(
+    candidate: StrategyCandidate,
+    spot_price: float,
+    implied_move_dollars: float,
+) -> go.Figure:
+    """Generate high-contrast, Alpaca Pro-style options payoff diagram."""
+    data = compute_payoff_curves(candidate, spot_price, implied_move_dollars)
+
+    spots = data["spot_range"]
+    pnl_exp = data["pnl_at_expiry"]
+    pnl_exit = data["pnl_at_exit"]
+
+    fig = go.Figure()
+
+    # 1. Zero Baseline
+    fig.add_hline(y=0, line_dash="solid", line_color="rgba(255, 255, 255, 0.2)", line_width=1.5)
+
+    # 2. Spot Price Indicator Line
+    fig.add_vline(
+        x=spot_price,
+        line_dash="dot",
+        line_color=ALPACA_YELLOW,
+        line_width=2,
+        annotation_text=f"Spot ${spot_price:.2f}",
+        annotation_position="top left",
+        annotation_font=dict(color=ALPACA_YELLOW, size=12, family="JetBrains Mono"),
+    )
+
+    # 3. Break-Even Boundary Markers
+    for be in data["break_evens"]:
+        fig.add_vline(
+            x=be,
+            line_dash="dash",
+            line_color="rgba(255, 255, 255, 0.5)",
+            line_width=1.5,
+            annotation_text=f"BE ${be:.2f}",
+            annotation_position="bottom right",
+            annotation_font=dict(color="#E6EDF3", size=11, family="JetBrains Mono"),
+        )
+
+    # 4. Primary Payoff Curve (Alpaca Yellow or Neon Green)
+    is_straddle = "straddle" in candidate.strategy_id
+    primary_color = CYAN_ACCENT if is_straddle else ALPACA_YELLOW
+
+    fig.add_trace(
+        go.Scatter(
+            x=spots,
+            y=pnl_exp,
+            mode="lines",
+            name="Expiration P&L",
+            line=dict(color=primary_color, width=3.5),
+        )
+    )
+
+    # 5. Expected Exit Curve (Post-Earnings IV Crush)
+    fig.add_trace(
+        go.Scatter(
+            x=spots,
+            y=pnl_exit,
+            mode="lines",
+            name="Post-Earnings Expected Exit (with IV Crush)",
+            line=dict(color=PURPLE_VOL, width=2.5, dash="dash"),
+        )
+    )
+
+    # Layout styling matching Alpaca / TradingView Pro dark themes
+    fig.update_layout(
+        title=dict(
+            text=f"<b>PAYOFF DISTRIBUTION · {candidate.decision.value.replace('_', ' ').upper()}</b>",
+            font=dict(family="JetBrains Mono", size=15, color=TEXT_PRIMARY),
+        ),
+        xaxis=dict(
+            title=dict(text="Underlying Price ($)", font=dict(color=TEXT_MUTED, size=12)),
+            gridcolor="rgba(255, 255, 255, 0.05)",
+            zerolinecolor="rgba(255, 255, 255, 0.1)",
+            tickfont=dict(family="JetBrains Mono", color=TEXT_MUTED),
+        ),
+        yaxis=dict(
+            title=dict(text="Net Profit / Loss ($)", font=dict(color=TEXT_MUTED, size=12)),
+            gridcolor="rgba(255, 255, 255, 0.05)",
+            zerolinecolor="rgba(255, 255, 255, 0.2)",
+            tickfont=dict(family="JetBrains Mono", color=TEXT_MUTED),
+            tickprefix="$",
+        ),
+        template="plotly_dark",
+        paper_bgcolor=ALPACA_CARD,
+        plot_bgcolor=ALPACA_DARK,
+        hovermode="x unified",
+        margin=dict(l=50, r=40, t=50, b=40),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(family="Inter", size=11, color=TEXT_PRIMARY),
+        ),
+    )
+
+    return fig
