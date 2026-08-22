@@ -1,4 +1,10 @@
-"""Executable implied move calculations and bounds."""
+r"""Executable implied move calculations and bounds.
+
+Academic Reference:
+- Brenner, M., & Subrahmanyam, M. G. (1988). "A Simple Formula to Compute the Implied Standard Deviation."
+  Financial Analysts Journal, 44(5), 80-83.
+  $$\text{Straddle}_{\text{ATM}} \approx 0.80 \cdot S_0 \cdot \sigma \cdot \sqrt{T}, \quad M_{\text{implied}} = \frac{\text{Straddle}}{S_0}$$
+"""
 
 from pydantic import BaseModel, ConfigDict, Field
 from volagent.domain.market import OptionContractSnapshot

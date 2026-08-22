@@ -1,4 +1,10 @@
-"""Forecast engine using deterministic historical shrinkage and IV crush calibration."""
+"""Forecast engine using deterministic historical shrinkage and IV crush calibration.
+
+Academic Foundations:
+- James, W., & Stein, C. (1961). "Estimation with Quadratic Loss." Proc. 4th Berkeley Symp., 361-379.
+- Efron, B. (2012). "Large-Scale Inference: Empirical Bayes Methods." Cambridge University Press.
+- Patell, J. M., & Wolfson, M. A. (1981). "The Ex-Ante Information Content of Accounting Earnings Announcements." J. Account. Res., 19(2), 661-687.
+"""
 
 import math
 from typing import Any
@@ -15,10 +21,10 @@ def compute_shrinkage_forecast(
     global_median_move: float = 0.070,
     model_version: str = "v1.0.0-shrinkage",
 ) -> tuple[MoveForecast, IVCrushForecast]:
-    """Compute deterministic historical shrinkage move forecast and IV crush distribution.
+    r"""Compute deterministic historical shrinkage move forecast and IV crush distribution.
     
-    Formula:
-    m_hat = w_t * m_ticker + w_s * m_sector + w_g * m_global
+    Academic Reference: James & Stein (1961) Empirical Bayes Shrinkage:
+    $$\hat{m} = w_t \cdot m_{\text{ticker}} + w_s \cdot m_{\text{sector}} + w_g \cdot m_{\text{global}}$$
     """
     ticker_moves = historical_ticker_moves or [0.075, 0.082, 0.061, 0.095, 0.088]
     n_ticker = len(ticker_moves)

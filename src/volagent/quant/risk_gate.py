@@ -1,4 +1,9 @@
-"""Deterministic 20-Point Quantitative Risk Gate with Independent Invariant Recomputation."""
+"""Deterministic 20-Point Quantitative Risk Gate with Independent Invariant Recomputation.
+
+Academic Foundations:
+- Artzner, P., Delbaen, F., Eber, J. M., & Heath, D. (1999). "Coherent Measures of Risk." Mathematical Finance, 9(3), 203-228.
+- Natenberg, S. (1994). "Option Volatility and Pricing." McGraw-Hill Professional.
+"""
 
 import math
 from volagent.config import RiskConfig

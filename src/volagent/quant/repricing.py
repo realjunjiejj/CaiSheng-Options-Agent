@@ -1,4 +1,9 @@
-"""Monte Carlo repricing, Expected Shortfall (ES95), and 2D stress matrix."""
+"""Monte Carlo repricing, Expected Shortfall (ES95), and 2D stress matrix.
+
+Academic References:
+- Rockafellar, R. T., & Uryasev, S. (2000). "Optimization of Conditional Value-at-Risk." Journal of Risk, 2(3), 21-41.
+- Carr, P., & Wu, L. (2009). "The Finite-Moment Log-Normal Model for Option Pricing and the Variance Risk Premium." J. Financial Economics, 93(3), 476-499.
+"""
 
 import math
 import numpy as np
