@@ -12,6 +12,7 @@ from volagent.execution.ledger import ExecutionLedger
 from volagent.graph.builder import VolAgentWorkflow
 from volagent.ui.charts import create_payoff_plot
 from volagent.ui.pages.research import render_research_page
+from volagent.ui.pages.rough_vol_simulator import render_rough_vol_simulator_page
 from volagent.ui.pages.scoreboard import render_scoreboard_page
 from volagent.ui.theme import (
     ALPACA_CARD,
@@ -51,10 +52,11 @@ def main() -> None:
     """, unsafe_allow_html=True)
 
     # Top-Level Main Tabs
-    tab_desk, tab_benchmarks, tab_research = st.tabs([
+    tab_desk, tab_benchmarks, tab_research, tab_rough_vol = st.tabs([
         "⚡ Pro Trading Desk",
         "📊 Replay Benchmarks",
-        "📚 Academic Foundations & Research",
+        "📚 Academic Foundations",
+        "🌪️ Rough Volatility Simulator",
     ])
 
     with tab_desk:
@@ -313,6 +315,9 @@ def main() -> None:
 
     with tab_research:
         render_research_page()
+
+    with tab_rough_vol:
+        render_rough_vol_simulator_page()
 
 
 if __name__ == "__main__":

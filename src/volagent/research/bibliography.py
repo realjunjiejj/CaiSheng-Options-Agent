@@ -19,6 +19,7 @@ class AcademicPaper:
         "coherent_risk_cvar",
         "multi_agent_ai",
         "defined_risk_derivatives",
+        "rough_volatility_frontier",
     ]
     core_concept: str
     latex_formula: str
@@ -143,6 +144,45 @@ RESEARCH_BIBLIOGRAPHY: list[AcademicPaper] = [
         latex_formula=r"\text{Citations}(\text{Claim}) \subseteq \text{ValidEvidenceIDs}(\mathcal{D}_{\text{frozen}})",
         volagent_subsystem="src/volagent/agents/event_magnitude.py & agents/model_risk.py",
         relevance_to_track_2="Ensures all agent thesis claims are strictly grounded in SEC filings and point-in-time option surface evidence.",
+    ),
+    AcademicPaper(
+        paper_id="GATHERAL-2018",
+        title="Volatility is rough",
+        authors="Jim Gatheral, Thibault Jaisson, Mathieu Rosenbaum",
+        year=2018,
+        journal="Quantitative Finance, 18(6), 933-949",
+        doi_or_url="https://doi.org/10.1080/14697688.2017.1393551",
+        category="rough_volatility_frontier",
+        core_concept="Log-volatility behaves as fractional Brownian motion with Hurst parameter $H \\approx 0.1$, explaining steep short-term implied volatility skew power-law blowup $O(T^{H-1/2})$.",
+        latex_formula=r"\log \sigma_{t+\Delta} - \log \sigma_t \sim \nu \Delta^H \xi, \quad H \in (0, 0.5), \quad \text{Skew}(T) \sim T^{H-1/2}",
+        volagent_subsystem="src/volagent/quant/rough_vol.py",
+        relevance_to_track_2="Explains explosive short-dated pre-earnings implied volatility skew that standard Markovian diffusion models fail to fit.",
+    ),
+    AcademicPaper(
+        paper_id="ABI-JABER-2019",
+        title="Affine Volterra processes",
+        authors="Eduardo Abi Jaber, Martin Larsson, Sergio Pulido",
+        year=2019,
+        journal="The Annals of Applied Probability, 29(5), 3155-3200",
+        doi_or_url="https://doi.org/10.1214/19-AAP1484",
+        category="rough_volatility_frontier",
+        core_concept="Markovian lifting: Mapping non-Markovian singular fractional kernels $K(t) = \\frac{t^{H-1/2}}{\\Gamma(H+1/2)}$ into an $n$-dimensional Markovian system of OU factors.",
+        latex_formula=r"K(t) \approx \sum_{i=1}^n c_i e^{-x_i t}, \quad V_t = V_0 + \sum_{i=1}^n c_i U_t^i, \quad dU_t^i = -x_i U_t^i dt + \nu \sqrt{V_t} dW_t",
+        volagent_subsystem="src/volagent/quant/rough_vol.py",
+        relevance_to_track_2="Restores $O(N)$ high-speed simulation and fast Fourier pricing to rough volatility models without non-Markovian memory overhead.",
+    ),
+    AcademicPaper(
+        paper_id="LYONS-1998",
+        title="Differential equations driven by rough signals",
+        authors="Terry Lyons",
+        year=1998,
+        journal="Revista Matemática Iberoamericana, 14(2), 215-310",
+        doi_or_url="https://doi.org/10.4171/RMI/240",
+        category="rough_volatility_frontier",
+        core_concept="Path signatures and rough path theory: Truncated tensor series of iterated path integrals capturing order of events, non-linear geometric shape, and Levy area invariant to time-reparameterization.",
+        latex_formula=r"\mathbb{S}(X)_{s,t}^{\le 2} = \left(1, \Delta X^i, \int_{s}^t (X_u^i - X_s^i) dX_u^j\right)",
+        volagent_subsystem="src/volagent/quant/rough_vol.py",
+        relevance_to_track_2="Extracts universal non-parametric geometric features from intraday volatility paths for downstream machine learning and anomaly detection.",
     ),
 ]
 
