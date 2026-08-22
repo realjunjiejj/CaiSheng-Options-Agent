@@ -60,7 +60,7 @@ def test_all_ui_modules_import():
 
 def test_symbol_must_match_scenario_underlying():
     """P1-17 Fix: Enforce that --symbol and --scenario underlying match."""
-    cmd = [sys.executable, "cli.py", "--symbol", "AAPL", "--scenario", "SCENARIO-NVDA-2024Q2-AMC", "--output-json"]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    env = {**os.environ, "PYTHONPATH": "src"}
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=env)
     assert proc.returncode == 1
     assert "ValidationError" in proc.stdout or "ValidationError" in proc.stderr

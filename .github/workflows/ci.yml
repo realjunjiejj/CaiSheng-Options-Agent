@@ -27,8 +27,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install pytest pytest-cov
+          pip install pytest
 
       - name: Run Pytest Test Suite
+        env:
+          PYTHONPATH: src
         run: |
-          pytest -v tests/ --cov=volagent --cov-report=term-missing
+          pytest -v tests/
