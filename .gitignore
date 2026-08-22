@@ -62,3 +62,5 @@ receipts/
 # Local audit and remediation notes
 audit.md
 CORRECTIONS.md
+.agents/
+ORIGINAL_REQUEST.md

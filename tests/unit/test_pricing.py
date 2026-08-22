@@ -2,7 +2,11 @@
 
 import math
 import pytest
-from volagent.quant.implied_vol import invert_implied_volatility
+from volagent.quant.implied_vol import (
+    brenner_subrahmanyam_implied_volatility,
+    corrado_miller_implied_volatility,
+    invert_implied_volatility,
+)
 from volagent.quant.pricing import bsm_greeks, bsm_price
 
 
@@ -59,3 +63,37 @@ def test_brent_iv_inversion():
 
     assert recovered_vol is not None
     assert pytest.approx(recovered_vol, abs=1e-4) == true_vol
+
+    # Test put option inversion
+    put_p = bsm_price(spot, strike, t, true_vol, r, option_type="put")
+    recovered_put_vol = invert_implied_volatility(put_p, spot, strike, t, r, option_type="put")
+    assert recovered_put_vol is not None
+    assert pytest.approx(recovered_put_vol, abs=1e-4) == true_vol
+
+
+def test_corrado_miller_and_brenner_subrahmanyam_approximations():
+    spot = 100.0
+    strike = 100.0
+    t = 0.25
+    true_vol = 0.30
+    r = 0.045
+
+    # ATM call price
+    call_p = bsm_price(spot, strike, t, true_vol, r, option_type="call")
+
+    # Corrado-Miller accuracy within ~0.5% of true vol for near-the-money
+    cm_vol = corrado_miller_implied_volatility(call_p, spot, strike, t, rate=r, option_type="call")
+    assert cm_vol is not None
+    assert pytest.approx(cm_vol, abs=0.01) == true_vol
+
+    # Test Corrado-Miller on put option
+    put_p = bsm_price(spot, strike, t, true_vol, r, option_type="put")
+    cm_put_vol = corrado_miller_implied_volatility(put_p, spot, strike, t, rate=r, option_type="put")
+    assert cm_put_vol is not None
+    assert pytest.approx(cm_put_vol, abs=0.01) == true_vol
+
+    # Brenner-Subrahmanyam ATM approximation
+    bs_vol = brenner_subrahmanyam_implied_volatility(call_p, spot, t)
+    assert bs_vol is not None
+    assert pytest.approx(bs_vol, abs=0.05) == true_vol
+

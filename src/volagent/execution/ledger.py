@@ -25,6 +25,8 @@ class ExecutionLedger:
 
     def _init_db(self) -> None:
         with self._get_connection() as conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS execution_ledger (
                     fingerprint TEXT PRIMARY KEY,
@@ -101,7 +103,9 @@ class ExecutionLedger:
                 WHERE approval_token = ? AND fingerprint = ? AND status = ?
             """, (ExecutionStatus.SUBMITTING.value, now.isoformat(), approval_token, fingerprint, ExecutionStatus.APPROVED.value))
             conn.commit()
-            return cursor.rowcount > 0
+            if cursor.rowcount == 0:
+                raise ExecutionError("Approval token has already been consumed or locked by another concurrent submission.")
+            return True
 
     def record_broker_result(self, approval_token: str, status: ExecutionStatus, broker_order_id: str | None = None) -> None:
         """Record final broker response."""

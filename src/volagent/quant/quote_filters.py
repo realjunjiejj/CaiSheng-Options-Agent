@@ -1,6 +1,7 @@
 """Quote filtering pipeline for options contracts."""
 
 from datetime import datetime
+from typing import Any
 from volagent.config import ContractFiltersConfig
 from volagent.domain.market import OptionContractSnapshot
 

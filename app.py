@@ -107,9 +107,9 @@ def main() -> None:
         tag_class = "tag-long" if final_decision == Decision.LONG_STRADDLE else ("tag-short" if final_decision == Decision.SHORT_IRON_BUTTERFLY else "tag-abstain")
         hero_thesis = ""
         if final_decision == Decision.LONG_STRADDLE and long_thesis:
-            hero_thesis = f"<strong>Long Volatility Thesis:</strong> {html.escape(long_thesis.thesis_statement)}"
+            hero_thesis = f"<strong>Long Volatility Thesis:</strong> {html.escape(long_thesis.thesis)}"
         elif final_decision == Decision.SHORT_IRON_BUTTERFLY and short_thesis:
-            hero_thesis = f"<strong>Short Volatility Thesis:</strong> {html.escape(short_thesis.thesis_statement)}"
+            hero_thesis = f"<strong>Short Volatility Thesis:</strong> {html.escape(short_thesis.thesis)}"
         else:
             hero_thesis = "<strong>Risk Preservation Mode:</strong> The Model-Risk Critic or Quantitative Risk Gate vetoed execution to preserve capital."
 
@@ -239,7 +239,7 @@ def main() -> None:
         
         with col_long:
             l_conf = long_thesis.confidence if long_thesis else 0.5
-            l_stmt = long_thesis.thesis_statement if long_thesis else "No Long Thesis Generated."
+            l_stmt = long_thesis.thesis if long_thesis else "No Long Thesis Generated."
             st.markdown(f"""
             <div class="info-card">
                 <div class="info-title" style="color: {CYAN_ACCENT};">📈 Long Vol Specialist ({l_conf*100:.0f}% Conf)</div>
@@ -250,7 +250,7 @@ def main() -> None:
 
         with col_short:
             s_conf = short_thesis.confidence if short_thesis else 0.5
-            s_stmt = short_thesis.thesis_statement if short_thesis else "No Short Thesis Generated."
+            s_stmt = short_thesis.thesis if short_thesis else "No Short Thesis Generated."
             st.markdown(f"""
             <div class="info-card">
                 <div class="info-title" style="color: {PURPLE_VOL};">📉 Short Vol Specialist ({s_conf*100:.0f}% Conf)</div>
@@ -260,7 +260,7 @@ def main() -> None:
             """, unsafe_allow_html=True)
 
         with col_critic:
-            c_status = critic_report.overall_status.value.upper() if critic_report else "PASS"
+            c_status = critic_report.status.value.upper() if critic_report else "PASS"
             c_rec = critic_report.recommendation.upper() if critic_report else "CONTINUE"
             st.markdown(f"""
             <div class="info-card">

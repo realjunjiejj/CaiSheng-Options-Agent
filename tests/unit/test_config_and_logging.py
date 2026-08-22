@@ -53,14 +53,19 @@ def test_all_ui_modules_import():
     import volagent.ui.pages.analyze
     import volagent.ui.pages.audit
     import volagent.ui.pages.decision
+    import volagent.ui.pages.research
+    import volagent.ui.pages.rough_vol_simulator
     import volagent.ui.pages.scoreboard
     assert volagent.ui.charts is not None
     assert volagent.ui.pages.decision is not None
+    assert volagent.ui.pages.research is not None
+    assert volagent.ui.pages.rough_vol_simulator is not None
 
 
 def test_symbol_must_match_scenario_underlying():
     """P1-17 Fix: Enforce that --symbol and --scenario underlying match."""
     env = {**os.environ, "PYTHONPATH": "src"}
+    cmd = [sys.executable, "cli.py", "--symbol", "AAPL", "--scenario", "SCENARIO-NVDA-2024Q2-AMC", "--output-json"]
     proc = subprocess.run(cmd, capture_output=True, text=True, env=env)
     assert proc.returncode == 1
     assert "ValidationError" in proc.stdout or "ValidationError" in proc.stderr

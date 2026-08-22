@@ -25,12 +25,18 @@ def compute_payoff_curves(
     
     PnL(S) = Position_Value(S) - Entry_Cash_Flow
     """
-    span = max(spot_price * 0.25, implied_move_dollars * 2.5)
+    base_span = max(spot_price * 0.25, implied_move_dollars * 2.5)
+    if implied_move_dollars > 0 and (n_points - 1) > 0:
+        k = max(2, int(round(base_span / implied_move_dollars)))
+        span = k * implied_move_dollars
+    else:
+        span = base_span
     spot_range = np.linspace(spot_price - span, spot_price + span, n_points)
+    n_total = len(spot_range)
 
     entry_cash_flow = candidate.entry_debit_credit
-    pnl_at_expiry = np.zeros(n_points)
-    pnl_at_exit = np.zeros(n_points)
+    pnl_at_expiry = np.zeros(n_total)
+    pnl_at_exit = np.zeros(n_total)
 
     for i, s in enumerate(spot_range):
         # 1. At expiration payoff (intrinsic value)

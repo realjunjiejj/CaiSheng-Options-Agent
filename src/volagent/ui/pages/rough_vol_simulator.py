@@ -244,7 +244,7 @@ def render_rough_vol_simulator_page() -> None:
 
     col_sig1, col_sig2 = st.columns(2)
     with col_sig1:
-        st.markdown("**Level 1 Increments ($\Delta X$):**")
+        st.markdown(r"**Level 1 Increments ($\Delta X$):**")
         st.write({
             "Time Increment (Δt)": f"{sig_features['sig_t']:.4f}",
             "Spot Increment (ΔS)": f"{sig_features['sig_s']:+.4f}",
@@ -253,7 +253,7 @@ def render_rough_vol_simulator_page() -> None:
         st.metric("Levy Area (Signed Area Enclosed)", f"{sig_features['levy_area']:.6f}")
 
     with col_sig2:
-        st.markdown("**Level 2 Iterated Integrals ($\int X^i dX^j$):**")
+        st.markdown(r"**Level 2 Iterated Integrals ($\int X^i dX^j$):**")
         sig_table = [
             {"Coordinate": "∫ t dt", "Value": f"{sig_features['sig_tt']:.6f}", "Interpretation": "Time quadratic progression"},
             {"Coordinate": "∫ t dS", "Value": f"{sig_features['sig_ts']:+.6f}", "Interpretation": "Time-weighted spot acceleration"},
