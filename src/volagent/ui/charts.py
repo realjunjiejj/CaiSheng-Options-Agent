@@ -180,3 +180,46 @@ def create_stress_heatmap(candidate: StrategyCandidate) -> go.Figure:
         margin=dict(l=40, r=30, t=40, b=30),
     )
     return fig
+
+def create_alpaca_equity_chart(current_equity: float = 100_000.0) -> go.Figure:
+    """Generate sleek, continuous canvas intraday equity curve chart."""
+    times = ["8 AM", "9 AM", "10 AM", "11 AM", "12 PM", "1 PM", "2 PM", "3 PM", "4 PM"]
+    values = [current_equity] * len(times)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=times,
+            y=values,
+            mode="lines",
+            line=dict(color="#FACC15", width=2.5),
+            fill="tozeroy",
+            fillcolor="rgba(250, 204, 21, 0.08)",
+            hoverinfo="x+y",
+            hovertemplate="$%{y:,.2f}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        height=170,
+        margin=dict(l=0, r=0, t=10, b=20),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(
+            showgrid=False,
+            showline=False,
+            color="#94A3B8",
+            tickfont=dict(family="JetBrains Mono", size=10),
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#F1F5F9",
+            showline=False,
+            color="#94A3B8",
+            tickformat="$,.0f",
+            tickfont=dict(family="JetBrains Mono", size=10),
+            range=[0, max(current_equity * 1.5, 150_000.0)],
+        ),
+        showlegend=False,
+    )
+    return fig
+
