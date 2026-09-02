@@ -92,5 +92,6 @@ TODO.md
 !.agents/skills/paper-trading-cli/
 !.agents/skills/paper-trading-mcp/
 ORIGINAL_REQUEST.md
-.superdesign/tmp/
+.superdesign/
+data/runtime/*.lock
 Archiver/

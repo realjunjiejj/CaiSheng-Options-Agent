@@ -16,6 +16,7 @@ from volagent.ui.theme import (
     RED_LOSS,
     TEXT_MUTED,
     TEXT_PRIMARY,
+    TEXT_SECONDARY,
 )
 
 
@@ -34,7 +35,7 @@ def create_payoff_plot(
     fig = go.Figure()
 
     # 1. Zero Baseline
-    fig.add_hline(y=0, line_dash="solid", line_color="rgba(255, 255, 255, 0.2)", line_width=1.5)
+    fig.add_hline(y=0, line_dash="solid", line_color="#CBD5E1", line_width=1.5)
 
     # 2. Spot Price Indicator Line
     fig.add_vline(
@@ -52,11 +53,11 @@ def create_payoff_plot(
         fig.add_vline(
             x=be,
             line_dash="dash",
-            line_color="rgba(255, 255, 255, 0.5)",
+            line_color="#94A3B8",
             line_width=1.5,
             annotation_text=f"BE ${be:.2f}",
             annotation_position="bottom right",
-            annotation_font=dict(color="#E6EDF3", size=11, family="JetBrains Mono"),
+            annotation_font=dict(color=TEXT_MUTED, size=11, family="SFMono-Regular"),
         )
 
     # 4. Primary Payoff Curve (Alpaca Yellow or Electric Blue)
@@ -68,7 +69,7 @@ def create_payoff_plot(
             x=spots,
             y=pnl_exp,
             mode="lines",
-            name="Expiration P&L",
+            name="Expiration",
             line=dict(color=primary_color, width=3.5),
         )
     )
@@ -79,42 +80,45 @@ def create_payoff_plot(
             x=spots,
             y=pnl_exit,
             mode="lines",
-            name="Post-Earnings Expected Exit (with IV Crush)",
+            name="Expected exit after IV crush",
             line=dict(color=PURPLE_VOL, width=2.5, dash="dash"),
         )
     )
 
-    # Layout styling matching Alpaca / TradingView Pro dark themes
+    # Light, recording-friendly layout aligned with the application canvas.
     fig.update_layout(
         title=dict(
             text=f"<b>PAYOFF DISTRIBUTION · {candidate.decision.value.replace('_', ' ').upper()}</b>",
-            font=dict(family="JetBrains Mono", size=15, color=TEXT_PRIMARY),
+            x=0.0,
+            xanchor="left",
+            font=dict(family="SFMono-Regular", size=13, color=TEXT_PRIMARY),
         ),
         xaxis=dict(
             title=dict(text="Underlying Price ($)", font=dict(color=TEXT_MUTED, size=12)),
-            gridcolor="rgba(255, 255, 255, 0.05)",
-            zerolinecolor="rgba(255, 255, 255, 0.1)",
-            tickfont=dict(family="JetBrains Mono", color=TEXT_MUTED),
+            gridcolor="#F1F5F9",
+            zerolinecolor="#CBD5E1",
+            tickfont=dict(family="SFMono-Regular", color=TEXT_MUTED),
         ),
         yaxis=dict(
             title=dict(text="Net Profit / Loss ($)", font=dict(color=TEXT_MUTED, size=12)),
-            gridcolor="rgba(255, 255, 255, 0.05)",
-            zerolinecolor="rgba(255, 255, 255, 0.2)",
-            tickfont=dict(family="JetBrains Mono", color=TEXT_MUTED),
+            gridcolor="#F1F5F9",
+            zerolinecolor="#CBD5E1",
+            tickfont=dict(family="SFMono-Regular", color=TEXT_MUTED),
             tickprefix="$",
         ),
-        template="plotly_dark",
+        template="plotly_white",
         paper_bgcolor=ALPACA_CARD,
         plot_bgcolor=ALPACA_DARK,
         hovermode="x unified",
-        margin=dict(l=50, r=40, t=50, b=40),
+        height=390,
+        margin=dict(l=50, r=24, t=50, b=82),
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1,
-            font=dict(family="Inter", size=11, color=TEXT_PRIMARY),
+            yanchor="top",
+            y=-0.20,
+            xanchor="left",
+            x=0,
+            font=dict(family="-apple-system", size=10, color=TEXT_SECONDARY),
         ),
     )
 
@@ -222,4 +226,3 @@ def create_alpaca_equity_chart(current_equity: float = 100_000.0) -> go.Figure:
         showlegend=False,
     )
     return fig
-

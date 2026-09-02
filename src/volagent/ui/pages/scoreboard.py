@@ -19,9 +19,13 @@ from volagent.execution.ledger import ExecutionLedger
 from volagent.config import PROJECT_ROOT
 
 
+BENCHMARK_CACHE_VERSION = "submission-results-v2"
+
+
 @st.cache_data(ttl=300, show_spinner=False)
-def get_cached_benchmarks() -> dict:
+def get_cached_benchmarks(cache_version: str = BENCHMARK_CACHE_VERSION) -> dict:
     """Cache the deterministic replay so reruns and tab switches are instant."""
+    del cache_version  # Its value intentionally invalidates stale serialized results.
     return evaluate_benchmarks()
 
 
@@ -100,32 +104,6 @@ def evidence_ladder_rows(receipt: dict) -> list[dict[str, str]]:
             ),
         },
     ]
-
-
-def account_truth_html(receipt: dict) -> str:
-    """Render account-wide P&L before any governed-trade or replay evidence."""
-    competition = receipt.get("competition") or {}
-    equity = competition.get("current_equity")
-    full_pnl = competition.get("full_account_net_pnl")
-    governed_pnl = float(
-        competition.get("governed_closed_trade_pnl", competition.get("realized_pnl", 0.0))
-    )
-    difference = competition.get("unattributed_and_unrealized_difference")
-
-    def money(value: object) -> str:
-        return f"${float(value):+,.2f}" if value is not None else "AWAITING VERIFIED EQUITY"
-
-    full_color = "#059669" if full_pnl is not None and float(full_pnl) >= 0.0 else "#DC2626"
-    return f"""<section style="border:1px solid #E2E8F0;background:#FFFFFF;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04);padding:18px 22px;margin-bottom:20px;">
-<div style="font-family:'JetBrains Mono',monospace;color:#D97706;font-size:.76em;font-weight:800;letter-spacing:0.06em;margin-bottom:12px;">ALPACA ACCOUNT TRUTH · $100,000 MANDATE</div>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;font-family:'JetBrains Mono',monospace;">
-<div><span style="color:#64748B;font-size:.70em;">CURRENT EQUITY</span><br><strong style="font-size:1.15em;color:#0F172A;">{f'${float(equity):,.2f}' if equity is not None else 'UNVERIFIED'}</strong></div>
-<div><span style="color:#64748B;font-size:.70em;">FULL ALPACA ACCOUNT P&amp;L</span><br><strong style="font-size:1.15em;color:{full_color};">{money(full_pnl)}</strong></div>
-<div><span style="color:#64748B;font-size:.70em;">GOVERNED CLOSED-TRADE P&amp;L</span><br><strong style="font-size:1.15em;color:#0F172A;">{money(governed_pnl)}</strong></div>
-<div><span style="color:#64748B;font-size:.70em;">UNATTRIBUTED / UNREALIZED DIFFERENCE</span><br><strong style="font-size:1.15em;color:#64748B;">{money(difference)}</strong></div>
-</div>
-<div style="color:#64748B;font-size:.80em;margin-top:12px;border-top:1px solid #F1F5F9;padding-top:8px;">The full-account result is the headline. Only broker-confirmed entry-to-exit lifecycles count as governed CaiSheng P&amp;L; replay remains separate.</div>
-</section>"""
 
 
 def trade_story_html(story: dict) -> str:
@@ -214,6 +192,35 @@ def benchmark_tape_html(aggregate: dict, *, locked_count: int) -> str:
 <div class="cs-story-evidence">{html.escape(evidence_label)}</div>
 </div>
 <div class="cs-story-tape">{tape}</div>
+</section>"""
+
+
+def competition_evidence_pending_html() -> str:
+    """Render one quiet status line until judge-verifiable evidence exists."""
+    return """<div class="cs-evidence-pending" role="status">
+<span class="cs-evidence-pending-dot" aria-hidden="true"></span>
+Competition evidence pending · 0 broker-confirmed closed trades · 0 settled benchmark comparisons
+</div>"""
+
+
+def controlled_validation_html(synthetic: dict, summary: list[dict]) -> str:
+    """Render the minimum replay evidence needed to prove system behavior."""
+    full = next(
+        (row for row in summary if row.get("Model Benchmark") == FULL),
+        summary[0] if summary else {},
+    )
+    risk_breaches = int(
+        full.get("risk_breaches_value")
+        if full.get("risk_breaches_value") is not None
+        else full.get("Risk Breaches", 0)
+    )
+    return f"""<section class="cs-validation">
+<div class="cs-overview-heading"><span>CONTROLLED VALIDATION</span><small>Synthetic functional replay · not competition P&amp;L</small></div>
+<div class="cs-validation-strip">
+<div><strong>${float(synthetic['net_pnl']):+,.0f}</strong><span>net replay P&amp;L</span></div>
+<div><strong>{int(synthetic['trades_count'])}</strong><span>eligible trades</span></div>
+<div><strong>{risk_breaches}</strong><span>risk breaches</span></div>
+</div>
 </section>"""
 
 
@@ -317,47 +324,60 @@ def _current_live_benchmark_evidence() -> tuple[dict, int]:
 
 def render_scoreboard_page() -> None:
     with st.spinner("Running sealed replay on first load…"):
-        results = get_cached_benchmarks()
+        results = get_cached_benchmarks(BENCHMARK_CACHE_VERSION)
 
     summary = results.get("summary", [])
 
     receipt = _current_economic_evidence(results)
-    st.markdown(account_truth_html(receipt), unsafe_allow_html=True)
-
     story = _current_trade_story()
-    st.markdown(trade_story_html(story), unsafe_allow_html=True)
-
     shadow_aggregate, shadow_locked_count = _current_live_benchmark_evidence()
-    st.markdown(
-        benchmark_tape_html(shadow_aggregate, locked_count=shadow_locked_count),
-        unsafe_allow_html=True,
-    )
-    if shadow_aggregate.get("opportunities"):
+    has_broker_close = story.get("status") == "BROKER_CONFIRMED"
+    settled_opportunities = int(shadow_aggregate.get("opportunities", 0))
+
+    if has_broker_close:
+        st.markdown(trade_story_html(story), unsafe_allow_html=True)
+    if settled_opportunities:
+        st.markdown(
+            benchmark_tape_html(shadow_aggregate, locked_count=shadow_locked_count),
+            unsafe_allow_html=True,
+        )
         st.plotly_chart(
             _shadow_policy_chart(shadow_aggregate["policies"]),
             width="stretch",
             config={"displayModeBar": False},
         )
+    if not has_broker_close and not settled_opportunities:
+        st.markdown(competition_evidence_pending_html(), unsafe_allow_html=True)
 
-    ladder = evidence_ladder_rows(receipt)
-    synthetic_tier = receipt["profitability"]["tiers"]["synthetic_replay"]
-    historical = receipt.get("historical_predictive_validation") or {}
-
-    st.markdown("### Supporting validation")
-    st.caption("Useful context—not Alpaca competition P&L.")
-    historical_column, replay_column = st.columns(2)
-    historical_column.metric(
-        "Historical forecast check",
-        f"{historical.get('evaluated_events_count', 0)} events",
+    full_summary = next(
+        (row for row in summary if row.get("Model Benchmark") == FULL),
+        summary[0] if summary else None,
     )
-    historical_column.caption(str(historical.get("verdict", "Unavailable")))
-    replay_column.metric(
-        "Controlled safety replay",
-        f"${synthetic_tier['net_pnl']:+,.0f}",
-    )
-    replay_column.caption(f"{synthetic_tier['trades_count']} synthetic trades · not competition P&L")
+    valid_trades = 0
+    replay_pnl = 0.0
+    if full_summary:
+        valid_trades = int(
+            full_summary.get("valid_trades_value")
+            or str(full_summary.get("Valid Trades", "0/0")).split("/", 1)[0]
+        )
+        replay_pnl = float(
+            full_summary.get("pnl_value")
+            or str(full_summary.get("Executable Net P&L", "$0"))
+            .replace("$", "")
+            .replace(",", "")
+        )
+    if full_summary and valid_trades:
+        visible_validation = {
+            "net_pnl": replay_pnl,
+            "trades_count": valid_trades,
+        }
+        st.markdown(
+            controlled_validation_html(visible_validation, summary),
+            unsafe_allow_html=True,
+        )
 
     with st.expander("Technical proof and downloadable receipts", expanded=False):
+        ladder = evidence_ladder_rows(receipt)
         st.markdown("#### Claim boundaries")
         st.dataframe(ladder, width="stretch", hide_index=True)
         st.markdown("#### Broker lineage")

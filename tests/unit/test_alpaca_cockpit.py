@@ -24,6 +24,7 @@ from volagent.ui.integration_status import (
     sanitize_preflight_for_judges,
 )
 from volagent.ui.pages.cockpit import build_competition_judge_summary
+from volagent.ui.pages.overview import judge_overview_html
 
 
 def test_alpaca_mcp_tool_schemas():
@@ -43,7 +44,7 @@ def test_alpaca_mcp_tool_schemas():
 
 
 def test_judge_navigation_has_only_backend_linked_workspaces():
-    assert PRIMARY_WORKSPACES == ("Command", "Agent", "Paper Trade", "Evidence")
+    assert PRIMARY_WORKSPACES == ("Overview", "Agent", "Operations", "Results")
 
 
 def test_competition_summary_is_decisive_and_never_exposes_account_id(tmp_path):
@@ -59,12 +60,29 @@ def test_competition_summary_is_decisive_and_never_exposes_account_id(tmp_path):
     assert "secret-paper-account-id" not in str(summary)
 
 
-def test_evidence_workspace_is_one_decisive_page_without_nested_tabs():
+def test_results_workspace_is_one_decisive_page_without_nested_tabs():
     app_source = (Path(__file__).parents[2] / "app.py").read_text()
 
     assert "EVIDENCE_VIEWS" not in app_source
     assert "evidence_tabs = st.tabs" not in app_source
-    assert 'if workspace == "Evidence":\n        render_scoreboard_page()' in app_source
+    assert 'if workspace == "Results":\n        render_scoreboard_page()' in app_source
+
+
+def test_overview_maps_the_strategy_to_alpaca_and_judge_evidence():
+    markup = judge_overview_html(
+        starting_nav=100_000.0,
+        hard_risk_dollars=500.0,
+        max_entries_per_day=1,
+        symbols=["SPY", "QQQ", "IWM"],
+    )
+
+    assert "Trade movement only when the edge survives debate" in markup
+    assert "Trading API" in markup
+    assert "OrderClass.MLEG" in markup
+    assert "FastMCP" in markup
+    assert "CLI" in markup
+    assert "$500" in markup
+    assert "Only broker-confirmed closes count" in markup
 
 
 def test_judge_ui_never_claims_unverified_connectivity_or_live_replay_execution():
@@ -79,8 +97,15 @@ def test_judge_ui_never_claims_unverified_connectivity_or_live_replay_execution(
     assert "caisheng-replay-ui-" in app_source
     assert "Quantitative Risk Gate (Passed)" not in app_source
     assert "Post-Earnings Guidance · High Dispersion" not in app_source
-    assert "Execute in Local Simulator" in app_source
-    assert "SEALED REPLAY" in app_source
+    assert "Execute in Local Simulator" not in app_source
+    assert "Approve Plan Token" not in app_source
+    assert "CONTROLLED REPLAY" in app_source
+    assert "NOT COMPETITION P&amp;L" in app_source
+    assert "PUBLIC JUDGE DEMO" not in app_source
+    assert "PAPER ARMED" not in app_source
+    assert "FAST-MCP V2 LIVE" not in app_source
+    assert "TRACK 02" not in app_source
+    assert "SHORT VOL ADVOCATE" in app_source
 
 
 def test_judge_preflight_summary_omits_account_identifier_and_secrets():

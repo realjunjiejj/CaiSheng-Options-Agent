@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 
-PRIMARY_WORKSPACES = ("Command", "Agent", "Paper Trade", "Evidence")
-PUBLIC_JUDGE_WORKSPACES = ("Agent", "Evidence")
+PRIMARY_WORKSPACES = ("Overview", "Agent", "Operations", "Results")
+PUBLIC_JUDGE_WORKSPACES = ("Overview", "Agent", "Results")
 
 
 def judge_workspaces(*, public_read_only: bool) -> tuple[str, ...]:

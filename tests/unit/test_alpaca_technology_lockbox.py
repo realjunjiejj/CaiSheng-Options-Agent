@@ -204,12 +204,12 @@ def test_combined_lockbox_requires_every_component_to_pass():
     assert "canonical approval" in receipt["execution_boundary"]
 
 
-def test_cockpit_exposes_official_lockbox_without_claiming_it_is_alpaca_product():
+def test_cockpit_exposes_integration_checks_without_claiming_an_alpaca_product():
     source = (PROJECT_ROOT / "src/volagent/ui/pages/cockpit.py").read_text()
 
-    assert "Verify Official Alpaca Lockbox" in source
+    assert "Run Alpaca integration checks" in source
     assert "not an Alpaca product" in source
-    assert "excludes the trading" in source
+    assert "paper-only order boundary" in source
     assert "run_alpaca_technology_lockbox" in source
 
 

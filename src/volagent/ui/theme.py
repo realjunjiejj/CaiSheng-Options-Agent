@@ -22,7 +22,7 @@ TEXT_PRIMARY = "#0F172A"        # Slate 900
 TEXT_SECONDARY = "#475569"      # Slate 600
 TEXT_MUTED = "#94A3B8"          # Slate 400
 
-# Institutional Alpaca & Track 02 Accents
+# Institutional Alpaca & Options Alpha Accents
 ALPACA_YELLOW = "#FACC15"       # Warm Alpaca Gold
 ALPACA_YELLOW_HOVER = "#EAB308"
 ALPACA_YELLOW_BG = "#FEFCE8"    # Yellow 50
@@ -76,11 +76,17 @@ FAIL_COLOR = RED_LOSS
 
 CUSTOM_CSS = f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap');
+    :root {{
+        --cs-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+        --cs-duration-fast: 120ms;
+        --cs-duration-ui: 180ms;
+        --cs-font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+        --cs-font-mono: "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+    }}
 
     /* 1. Global Reset & Continuous Canvas */
     html, body, [class*="css"] {{
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family: var(--cs-font-ui);
         background-color: {CANVAS_BG} !important;
         color: {TEXT_PRIMARY} !important;
         margin: 0 !important;
@@ -143,25 +149,11 @@ CUSTOM_CSS = f"""
         gap: 16px;
     }}
 
-    .cs-llama-badge {{
-        width: 42px;
-        height: 42px;
-        background: {ALPACA_YELLOW};
-        color: #000000;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        font-weight: 800;
-        flex-shrink: 0;
-    }}
-
     .cs-eyebrow {{
         display: flex;
         align-items: center;
         gap: 8px;
-        font-family: 'JetBrains Mono', monospace;
+        font-family: var(--cs-font-mono);
         font-size: 0.72rem;
         font-weight: 700;
         color: {BRAND_AMBER};
@@ -185,6 +177,17 @@ CUSTOM_CSS = f"""
         font-weight: 400;
     }}
 
+    .cs-version {{
+        padding: 2px 7px;
+        border: 1px solid {CARD_BORDER};
+        border-radius: 999px;
+        background: {CANVAS_SUBTLE};
+        color: {TEXT_SECONDARY};
+        font-size: 0.66rem;
+        letter-spacing: 0;
+        text-transform: none;
+    }}
+
     .cs-status-pills {{
         display: flex;
         align-items: center;
@@ -192,31 +195,180 @@ CUSTOM_CSS = f"""
         flex-wrap: wrap;
     }}
 
-    .cs-pill-armed {{
-        background: {GREEN_BG};
-        border: 1px solid {GREEN_BORDER};
-        color: {GREEN_PROFIT};
+    .cs-proof-pill {{
+        background: {CANVAS_SUBTLE};
+        border: 1px solid {CARD_BORDER};
+        color: {TEXT_SECONDARY};
         border-radius: 9999px;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.72rem;
+        font-family: var(--cs-font-mono);
+        font-size: 0.68rem;
         font-weight: 700;
-        padding: 4px 12px;
+        padding: 5px 10px;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
         white-space: nowrap;
     }}
 
-    .cs-pill-mcp {{
-        background: {CYAN_BG};
-        border: 1px solid {CYAN_BORDER};
-        color: {CYAN_ACCENT};
-        border-radius: 9999px;
-        font-family: 'JetBrains Mono', monospace;
+    .cs-proof-pill-accent {{
+        background: {ALPACA_YELLOW_BG};
+        border-color: {ALPACA_YELLOW_BORDER};
+        color: #854D0E;
+    }}
+
+    /* Judge overview: one narrative, no decorative dashboard chrome. */
+    .cs-overview {{
+        animation: cs-content-enter 220ms var(--cs-ease-out) both;
+    }}
+
+    .cs-overview-hero {{
+        max-width: 1120px;
+        padding: 34px 0 30px;
+    }}
+
+    .cs-overview-kicker,
+    .cs-overview-heading span,
+    .cs-overview-footer span {{
+        color: {BRAND_AMBER};
+        font-family: var(--cs-font-mono);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.065em;
+    }}
+
+    .cs-overview-hero h1 {{
+        max-width: 850px;
+        margin: 8px 0 12px;
+        font-size: clamp(2.25rem, 5vw, 4.35rem) !important;
+        line-height: 0.98 !important;
+        letter-spacing: -0.055em !important;
+    }}
+
+    .cs-overview-hero > p {{
+        max-width: 820px;
+        margin: 0;
+        color: {TEXT_SECONDARY} !important;
+        font-size: 1rem;
+        line-height: 1.6;
+    }}
+
+    .cs-overview-stats {{
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-top: 30px;
+        border-top: 1px solid {CARD_BORDER};
+        border-bottom: 1px solid {CARD_BORDER};
+    }}
+
+    .cs-overview-stats > div {{
+        padding: 15px 18px;
+        border-right: 1px solid {CARD_BORDER_SUBTLE};
+    }}
+
+    .cs-overview-stats > div:first-child {{ padding-left: 0; }}
+    .cs-overview-stats > div:last-child {{ border-right: 0; }}
+    .cs-overview-stats strong {{
+        display: block;
+        color: {TEXT_PRIMARY};
+        font-family: var(--cs-font-mono);
+        font-size: 1.35rem;
+        font-variant-numeric: tabular-nums;
+    }}
+    .cs-overview-stats span {{
+        color: {TEXT_MUTED};
         font-size: 0.72rem;
-        font-weight: 700;
-        padding: 4px 12px;
-        white-space: nowrap;
+    }}
+
+    .cs-overview-section {{
+        padding: 26px 0;
+        border-bottom: 1px solid {CARD_BORDER};
+    }}
+
+    .cs-overview-heading {{
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 16px;
+    }}
+
+    .cs-overview-heading small {{
+        color: {TEXT_MUTED};
+        font-size: 0.72rem;
+    }}
+
+    .cs-flow {{
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }}
+
+    .cs-flow > div {{
+        position: relative;
+        min-width: 0;
+        padding: 2px 18px 2px 0;
+    }}
+
+    .cs-flow > div:not(:last-child)::after {{
+        content: "→";
+        position: absolute;
+        top: 1px;
+        right: 7px;
+        color: {TEXT_MUTED};
+        font-family: var(--cs-font-mono);
+    }}
+
+    .cs-flow b,
+    .cs-flow strong,
+    .cs-flow span {{ display: block; }}
+    .cs-flow b {{
+        color: {BRAND_AMBER};
+        font-family: var(--cs-font-mono);
+        font-size: 0.62rem;
+    }}
+    .cs-flow strong {{
+        margin-top: 5px;
+        color: {TEXT_PRIMARY};
+        font-size: 0.84rem;
+    }}
+    .cs-flow span {{
+        margin-top: 3px;
+        color: {TEXT_MUTED};
+        font-size: 0.68rem;
+        line-height: 1.4;
+    }}
+
+    .cs-stack-list > div {{
+        display: grid;
+        grid-template-columns: 120px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 18px;
+        padding: 12px 0;
+        border-top: 1px solid {CARD_BORDER_SUBTLE};
+    }}
+    .cs-stack-list strong {{ color: {TEXT_PRIMARY}; font-size: 0.85rem; }}
+    .cs-stack-list span {{ color: {TEXT_SECONDARY}; font-size: 0.78rem; }}
+    .cs-stack-list code {{
+        padding: 3px 7px;
+        border-radius: 5px;
+        background: {CANVAS_SUBTLE};
+        color: {TEXT_SECONDARY};
+        font-family: var(--cs-font-mono);
+        font-size: 0.64rem;
+    }}
+
+    .cs-overview-footer {{
+        display: grid;
+        grid-template-columns: 0.8fr 1.2fr 1.7fr;
+        gap: 28px;
+        padding: 20px 0 4px;
+    }}
+    .cs-overview-footer span,
+    .cs-overview-footer strong {{ display: block; }}
+    .cs-overview-footer span {{ color: {TEXT_MUTED}; font-size: 0.62rem; }}
+    .cs-overview-footer strong {{
+        margin-top: 5px;
+        color: {TEXT_PRIMARY};
+        font-size: 0.74rem;
+        line-height: 1.45;
     }}
 
     /* 3. Linear / Vercel Open Text Tabs (NO CAPSULE BOX) */
@@ -245,11 +397,15 @@ CUSTOM_CSS = f"""
         display: inline-flex !important;
         align-items: center !important;
         box-shadow: none !important;
-        transition: all 140ms ease !important;
+        transition: color var(--cs-duration-ui) var(--cs-ease-out), border-color var(--cs-duration-ui) var(--cs-ease-out), transform var(--cs-duration-fast) var(--cs-ease-out) !important;
     }}
 
     [data-testid="stRadio"] [role="radiogroup"] > label > div:first-child,
     [data-testid="stRadioGroup"] > label > div:first-child {{
+        display: none !important;
+    }}
+
+    [data-testid="stRadioOption"] > div > div > div:first-child:not([data-testid="stMarkdownContainer"]) {{
         display: none !important;
     }}
 
@@ -258,16 +414,11 @@ CUSTOM_CSS = f"""
     [data-testid="stRadio"] [role="radiogroup"] > label span,
     [data-testid="stRadioGroup"] > label span {{
         color: #64748B !important;
-        font-family: 'Inter', sans-serif !important;
+        font-family: var(--cs-font-ui) !important;
         font-weight: 500 !important;
         font-size: 0.9rem !important;
         margin: 0 !important;
-        transition: color 140ms ease !important;
-    }}
-
-    [data-testid="stRadio"] [role="radiogroup"] > label:hover p,
-    [data-testid="stRadioGroup"] > label:hover p {{
-        color: #0F172A !important;
+        transition: color var(--cs-duration-ui) var(--cs-ease-out) !important;
     }}
 
     [data-testid="stRadio"] [role="radiogroup"] > label:has(input:checked),
@@ -308,20 +459,14 @@ CUSTOM_CSS = f"""
     .stButton > button, button[kind="primary"], button[kind="secondary"] {{
         background: #0F172A !important;
         color: #FFFFFF !important;
-        font-family: 'Inter', sans-serif !important;
+        font-family: var(--cs-font-ui) !important;
         font-weight: 600 !important;
         font-size: 0.85rem !important;
         border: 1px solid #0F172A !important;
         border-radius: 6px !important;
         padding: 6px 14px !important;
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-        transition: transform 100ms cubic-bezier(0.23, 1, 0.32, 1), background-color 140ms ease, box-shadow 140ms ease !important;
-    }}
-
-    .stButton > button:hover, button[kind="primary"]:hover {{
-        background: #1E293B !important;
-        border-color: #1E293B !important;
-        transform: translateY(-1px) !important;
+        transition: transform var(--cs-duration-fast) var(--cs-ease-out), background-color var(--cs-duration-ui) var(--cs-ease-out), border-color var(--cs-duration-ui) var(--cs-ease-out), box-shadow var(--cs-duration-ui) var(--cs-ease-out) !important;
     }}
 
     .stButton > button:active, button[kind="primary"]:active, button[kind="secondary"]:active {{
@@ -333,9 +478,12 @@ CUSTOM_CSS = f"""
         color: {TEXT_PRIMARY} !important;
         border: 1px solid {CARD_BORDER} !important;
     }}
-    button[kind="secondary"]:hover {{
-        background: #F8FAFC !important;
-        border-color: #CBD5E1 !important;
+    .stButton > button:focus-visible,
+    button[kind="primary"]:focus-visible,
+    button[kind="secondary"]:focus-visible,
+    [data-testid="stRadio"] [role="radiogroup"] > label:focus-within {{
+        outline: 3px solid rgba(2, 132, 199, 0.25) !important;
+        outline-offset: 2px !important;
     }}
 
     /* 6. Open Continuous Canvas (NO CARD BOXES) */
@@ -365,28 +513,314 @@ CUSTOM_CSS = f"""
         margin-top: 4px !important;
     }}
 
-    .cs-replay-notice {{
-        color: {TEXT_SECONDARY};
-        background: #F8FAFC;
-        border: none;
-        border-left: 3px solid {BRAND_AMBER};
-        border-radius: 4px;
-        padding: 10px 16px;
-        margin: 0 0 20px 0;
-        font-size: 0.84rem;
-        line-height: 1.5;
+    .cs-context-row {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: -8px 0 14px;
+        font-family: var(--cs-font-mono);
+        font-size: 0.66rem;
+        font-weight: 700;
+        letter-spacing: 0.045em;
     }}
 
-    .cs-replay-notice strong {{
-        color: {TEXT_PRIMARY};
-        font-family: 'JetBrains Mono', monospace;
+    .cs-context-badge {{
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid {ALPACA_YELLOW_BORDER};
+        background: {ALPACA_YELLOW_BG};
+        color: #854D0E;
     }}
+
+    .cs-context-boundary {{
+        color: {TEXT_MUTED};
+    }}
+
+    .cs-evidence-pending {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 2px 0 22px;
+        color: {TEXT_MUTED};
+        font-family: var(--cs-font-mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.015em;
+    }}
+
+    .cs-evidence-pending-dot {{
+        width: 6px;
+        height: 6px;
+        flex: 0 0 6px;
+        border-radius: 50%;
+        background: #F59E0B;
+    }}
+
+    @keyframes cs-content-enter {{
+        from {{ opacity: 0; transform: translateY(5px); }}
+        to {{ opacity: 1; transform: translateY(0); }}
+    }}
+
+    .cs-decision-hero {{
+        margin: 18px 0 10px;
+        padding: 0 0 18px;
+        border-bottom: 1px solid {CARD_BORDER};
+        animation: cs-content-enter 220ms var(--cs-ease-out) both;
+    }}
+
+    .cs-decision-topline,
+    .cs-instrument,
+    .cs-section-heading,
+    .cs-critic-strip {{
+        display: flex;
+        align-items: center;
+    }}
+
+    .cs-decision-topline {{
+        justify-content: space-between;
+        gap: 16px;
+    }}
+
+    .cs-instrument {{
+        gap: 12px;
+    }}
+
+    .cs-symbol {{
+        min-width: 52px;
+        height: 42px;
+        padding: 0 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        border: 1px solid {BRAND_AMBER_BORDER};
+        background: {BRAND_AMBER_BG};
+        color: {BRAND_AMBER};
+        font-family: var(--cs-font-mono);
+        font-size: 0.9rem;
+        font-weight: 800;
+    }}
+
+    .cs-spot {{
+        color: {TEXT_PRIMARY};
+        font-family: var(--cs-font-mono);
+        font-size: 1.75rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.035em;
+        line-height: 1.05;
+    }}
+
+    .cs-scenario-id {{
+        margin-top: 3px;
+        color: {TEXT_MUTED};
+        font-family: var(--cs-font-mono);
+        font-size: 0.66rem;
+    }}
+
+    .cs-thesis {{
+        max-width: 960px;
+        margin: 16px 0;
+        color: #334155;
+        font-size: 0.92rem;
+        line-height: 1.55;
+    }}
+
+    .cs-thesis span {{
+        display: block;
+        margin-bottom: 4px;
+        color: {TEXT_PRIMARY};
+        font-family: var(--cs-font-mono);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.055em;
+    }}
+
+    .cs-metric-strip {{
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        border-top: 1px solid {CARD_BORDER_SUBTLE};
+        border-bottom: 1px solid {CARD_BORDER_SUBTLE};
+    }}
+
+    .cs-metric {{
+        padding: 13px 16px;
+        border-right: 1px solid {CARD_BORDER_SUBTLE};
+    }}
+
+    .cs-metric:first-child {{ padding-left: 0; }}
+    .cs-metric:last-child {{ border-right: 0; }}
+
+    .cs-metric-label {{
+        margin-bottom: 4px;
+        color: {TEXT_MUTED};
+        font-family: var(--cs-font-mono);
+        font-size: 0.64rem;
+        font-weight: 700;
+        letter-spacing: 0.045em;
+    }}
+
+    .cs-metric-value {{
+        font-family: var(--cs-font-mono);
+        font-size: 1.35rem;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .cs-metric-value small {{
+        margin-left: 6px;
+        color: {TEXT_MUTED};
+        font-size: 0.62rem;
+        font-weight: 600;
+    }}
+
+    .cs-metric-amber {{ color: {BRAND_AMBER}; }}
+    .cs-metric-blue {{ color: {CYAN_ACCENT}; }}
+    .cs-metric-red {{ color: {RED_LOSS}; }}
+
+    .cs-runtime-proof {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin: 0 0 16px;
+    }}
+
+    .cs-runtime-proof span {{
+        padding: 3px 7px;
+        border-radius: 5px;
+        background: {CANVAS_SUBTLE};
+        color: {TEXT_SECONDARY};
+        font-family: var(--cs-font-mono);
+        font-size: 0.62rem;
+        font-weight: 700;
+    }}
+
+    .cs-agent-section {{
+        animation: cs-content-enter 240ms 40ms var(--cs-ease-out) both;
+    }}
+
+    .cs-section-heading {{
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+        color: {TEXT_PRIMARY};
+        font-family: var(--cs-font-mono);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.045em;
+    }}
+
+    .cs-section-heading small {{
+        color: {TEXT_MUTED};
+        font-size: 0.64rem;
+        font-weight: 600;
+        letter-spacing: 0;
+    }}
+
+    .cs-agent-grid {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }}
+
+    .cs-agent-card {{
+        min-height: 160px;
+        padding: 15px;
+        border: 1px solid {CARD_BORDER};
+        border-radius: 10px;
+        background: {CANVAS_BG};
+    }}
+
+    .cs-agent-label {{
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: {TEXT_PRIMARY};
+        font-family: var(--cs-font-mono);
+        font-size: 0.66rem;
+        font-weight: 800;
+        letter-spacing: 0.035em;
+    }}
+
+    .cs-agent-label b {{
+        margin-left: auto;
+        font-size: 0.66rem;
+    }}
+
+    .cs-agent-dot {{
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+    }}
+
+    .cs-agent-long .cs-agent-dot {{ background: {CYAN_ACCENT}; }}
+    .cs-agent-short .cs-agent-dot {{ background: {PURPLE_VOL}; }}
+
+    .cs-agent-card p {{
+        min-height: 62px;
+        margin: 12px 0;
+        color: {TEXT_SECONDARY} !important;
+        font-size: 0.8rem;
+        line-height: 1.45;
+    }}
+
+    .cs-agent-metrics {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }}
+
+    .cs-agent-metrics span {{
+        padding: 3px 7px;
+        border: 1px solid {CARD_BORDER};
+        border-radius: 999px;
+        color: {TEXT_SECONDARY};
+        font-family: var(--cs-font-mono);
+        font-size: 0.61rem;
+        font-weight: 700;
+    }}
+
+    .cs-critic-strip {{
+        display: grid;
+        grid-template-columns: auto auto minmax(0, 1fr);
+        gap: 10px;
+        margin: 10px 0 14px;
+        padding: 9px 11px;
+        border: 1px solid {CARD_BORDER};
+        border-radius: 8px;
+        background: {CANVAS_SUBTLE};
+        font-family: var(--cs-font-mono);
+        font-size: 0.63rem;
+    }}
+
+    .cs-critic-strip span {{ color: {TEXT_SECONDARY}; font-weight: 800; }}
+    .cs-critic-strip strong {{ font-weight: 800; }}
+    .cs-critic-strip small {{ color: {TEXT_MUTED}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+    .cs-critic-pass strong {{ color: {GREEN_PROFIT}; }}
+    .cs-critic-fail strong {{ color: {RED_LOSS}; }}
+
+    .cs-empty-payoff {{
+        min-height: 190px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        margin-bottom: 16px;
+        border: 1px dashed {RED_BORDER};
+        border-radius: 10px;
+        background: {RED_BG};
+        font-family: var(--cs-font-mono);
+        text-align: center;
+    }}
+
+    .cs-empty-payoff strong {{ color: {RED_LOSS}; font-size: 0.74rem; }}
+    .cs-empty-payoff span {{ color: {TEXT_SECONDARY}; font-size: 0.66rem; }}
 
     /* Status Pills */
     .pill-badge {{
         display: inline-flex;
         align-items: center;
-        font-family: 'JetBrains Mono', monospace;
+        font-family: var(--cs-font-mono);
         font-weight: 700;
         font-size: 0.74rem;
         padding: 2px 8px;
@@ -446,6 +880,154 @@ CUSTOM_CSS = f"""
     [data-testid="stExpander"] summary {{
         color: {TEXT_PRIMARY} !important;
         font-weight: 600 !important;
+    }}
+
+    .cs-contract-table-wrap {{
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }}
+
+    @media (hover: hover) and (pointer: fine) {{
+        [data-testid="stRadio"] [role="radiogroup"] > label:hover p,
+        [data-testid="stRadioGroup"] > label:hover p {{
+            color: {TEXT_PRIMARY} !important;
+        }}
+
+        .stButton > button:hover,
+        button[kind="primary"]:hover {{
+            background: #1E293B !important;
+            border-color: #1E293B !important;
+            transform: translateY(-1px) !important;
+        }}
+
+        button[kind="secondary"]:hover {{
+            background: {CANVAS_SUBTLE} !important;
+            border-color: #CBD5E1 !important;
+        }}
+    }}
+
+    @media (max-width: 900px) {{
+        .block-container {{ padding: 0.8rem 1.25rem 3rem !important; }}
+        .cs-judge-header {{ align-items: flex-start; flex-direction: column; }}
+        .cs-status-pills {{ justify-content: flex-start; }}
+        .cs-overview-stats {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+        .cs-overview-stats > div:nth-child(2) {{ border-right: 0; }}
+        .cs-overview-stats > div:nth-child(-n+2) {{ border-bottom: 1px solid {CARD_BORDER_SUBTLE}; }}
+        .cs-flow {{ grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 0; }}
+        .cs-stack-list > div {{ grid-template-columns: 100px minmax(0, 1fr); }}
+        .cs-stack-list code {{ grid-column: 2; justify-self: start; }}
+        .cs-overview-footer {{ grid-template-columns: 1fr; gap: 14px; }}
+        [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap !important; }}
+        [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {{
+            flex: 1 1 100% !important;
+            width: 100% !important;
+            min-width: 100% !important;
+        }}
+        .cs-agent-grid {{ grid-template-columns: 1fr; }}
+        .cs-agent-card {{ min-height: 0; }}
+        .cs-agent-card p {{ min-height: 0; }}
+        .cs-critic-strip {{ grid-template-columns: auto auto; }}
+        .cs-critic-strip small {{ grid-column: 1 / -1; white-space: normal; }}
+    }}
+
+    @media (min-width: 641px) and (max-width: 900px) {{
+        .st-key-scenario_selector [data-testid="stHorizontalBlock"] {{
+            flex-wrap: nowrap !important;
+        }}
+        .st-key-scenario_selector [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {{
+            flex: 1 1 0 !important;
+            width: auto !important;
+            min-width: 0 !important;
+        }}
+        .st-key-scenario_selector .stButton > button {{
+            padding-inline: 8px !important;
+            font-size: 0.76rem !important;
+        }}
+    }}
+
+    @media (max-width: 640px) {{
+        .block-container {{ padding-inline: 0.95rem !important; }}
+        .cs-subtitle {{ max-width: 29ch; }}
+        .cs-status-pills {{ gap: 6px; }}
+        .cs-proof-pill {{ font-size: 0.61rem; padding: 4px 7px; }}
+        body [data-testid="stRadio"] [data-testid="stRadioGroup"] {{
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 0 16px !important;
+        }}
+        [data-testid="stRadioOption"] {{ width: 100% !important; }}
+        .cs-overview-hero {{ padding: 22px 0 20px; }}
+        .cs-overview-hero h1 {{ font-size: 2.35rem !important; }}
+        .cs-overview-hero > p {{ font-size: 0.88rem; }}
+        .cs-overview-stats > div {{ padding: 12px 10px; }}
+        .cs-overview-stats > div:nth-child(odd) {{ padding-left: 0; }}
+        .cs-overview-stats strong {{ font-size: 1.1rem; }}
+        .cs-overview-heading {{ display: block; }}
+        .cs-overview-heading small {{ display: block; margin-top: 4px; }}
+        .cs-flow {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+        .cs-flow > div:nth-child(2n)::after {{ display: none; }}
+        .cs-stack-list > div {{ grid-template-columns: 1fr; gap: 4px; }}
+        .cs-stack-list code {{ grid-column: 1; }}
+        .cs-decision-topline {{ align-items: flex-start; flex-wrap: wrap; }}
+        .cs-metric-strip {{ grid-template-columns: 1fr; }}
+        .cs-metric {{ padding: 10px 0; border-right: 0; border-bottom: 1px solid {CARD_BORDER_SUBTLE}; }}
+        .cs-metric:last-child {{ border-bottom: 0; }}
+    }}
+
+    .cs-validation {{
+        max-width: 920px;
+        padding: 22px 0;
+    }}
+
+    .cs-validation-strip {{
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        border-top: 1px solid {CARD_BORDER};
+        border-bottom: 1px solid {CARD_BORDER};
+    }}
+
+    .cs-validation-strip > div {{
+        padding: 14px 18px;
+        border-right: 1px solid {CARD_BORDER_SUBTLE};
+    }}
+
+    .cs-validation-strip > div:first-child {{ padding-left: 0; }}
+    .cs-validation-strip > div:last-child {{ border-right: 0; }}
+    .cs-validation-strip strong,
+    .cs-validation-strip span {{ display: block; }}
+    .cs-validation-strip strong {{
+        color: {TEXT_PRIMARY};
+        font-family: var(--cs-font-mono);
+        font-size: 1.45rem;
+        font-variant-numeric: tabular-nums;
+    }}
+    .cs-validation-strip span {{
+        margin-top: 3px;
+        color: {TEXT_MUTED};
+        font-size: 0.7rem;
+    }}
+
+    @media (max-width: 640px) {{
+        .block-container {{ padding: 0.65rem 0.9rem 2.5rem !important; }}
+        .cs-judge-header {{ flex-direction: column; padding-bottom: 14px; }}
+        .cs-status-pills {{ justify-content: flex-start; }}
+        .cs-subtitle {{ max-width: 34rem; }}
+        .cs-metric-strip {{ grid-template-columns: 1fr; }}
+        .cs-metric {{ padding: 10px 0; border-right: 0; border-bottom: 1px solid {CARD_BORDER_SUBTLE}; }}
+        .cs-metric:last-child {{ border-bottom: 0; }}
+        .cs-section-heading {{ align-items: flex-start; flex-direction: column; gap: 2px; }}
+        .cs-decision-topline {{ align-items: flex-start; }}
+        .cs-scenario-id {{ max-width: 15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+    }}
+
+    @media (prefers-reduced-motion: reduce) {{
+        *, *::before, *::after {{
+            scroll-behavior: auto !important;
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }}
     }}
 </style>
 """

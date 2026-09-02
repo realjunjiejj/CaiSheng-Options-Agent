@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import tempfile
 from typing import Any
 
 from volagent.config import VolAgentSettings, load_config
@@ -11,6 +12,7 @@ from volagent.data.replay import REPLAY_DIR, ReplayDataManager
 from volagent.domain.enums import AbstentionReason, Decision, GateStatus
 from volagent.domain.strategies import StrategyCandidate
 from volagent.evaluation.accounting_oracle import RealizedTradeResult, compute_realized_trade_pnl
+from volagent.execution.ledger import ExecutionLedger
 from volagent.graph.builder import VolAgentWorkflow
 
 
@@ -97,6 +99,10 @@ def evaluate_benchmarks(
     cfg.forecast.monte_carlo_scenarios = min(cfg.forecast.monte_carlo_scenarios, 256)
     replay_mgr = ReplayDataManager(data_dir=data_path)
     workflow = VolAgentWorkflow(config=cfg, llm_client=llm_client)
+    evaluation_workspace = tempfile.TemporaryDirectory(prefix="caisheng-replay-evaluation-")
+    evaluation_ledger = ExecutionLedger(
+        db_path=Path(evaluation_workspace.name) / "evaluation.db"
+    )
 
     aggregates = {
         name: {
@@ -135,6 +141,7 @@ def evaluate_benchmarks(
             "option_chain": scenario["option_chain"],
             "evidence": scenario.get("evidence", []),
             "historical_moves": scenario.get("historical_moves", []),
+            "ledger": evaluation_ledger,
         }
         full_result = workflow.run({**graph_inputs, "enable_agent_debate": True, "enable_risk_governor": True})
         b3_result = workflow.run({**graph_inputs, "enable_agent_debate": True, "enable_risk_governor": False})
@@ -297,7 +304,7 @@ def evaluate_benchmarks(
             "valid_trades_value": aggregate["valid_trades"],
         })
 
-    return {
+    result = {
         "rows": rows,
         "ablation_table": ablation_table,
         "summary": summary,
@@ -308,3 +315,5 @@ def evaluate_benchmarks(
         "agent_mode": "llm" if llm_client is not None else "deterministic_replay",
         "monte_carlo_scenarios": cfg.forecast.monte_carlo_scenarios,
     }
+    evaluation_workspace.cleanup()
+    return result

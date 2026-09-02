@@ -260,6 +260,22 @@ def test_controlled_variants_are_declared_from_one_graph_protocol():
     assert controls["B4: QUANT_ONLY"]["Final Governor"] == "ON"
 
 
+def test_replay_evaluation_is_isolated_from_live_system_halt(tmp_path, monkeypatch):
+    live_ledger = ExecutionLedger(tmp_path / "live-halted.db")
+    live_ledger.trip_system_halt("Live-account safety halt")
+    monkeypatch.setenv("VOLAGENT_LEDGER_DB_PATH", str(live_ledger.db_path))
+
+    result = evaluate_benchmarks()
+    full = next(
+        row for row in result["summary"]
+        if row["Model Benchmark"] == "CaiSheng (Full)"
+    )
+
+    assert full["Valid Trades"] == "4/6"
+    assert full["Executable Net P&L"] == "$+2044.00"
+    assert full["Risk Breaches"] == "0"
+
+
 def test_b3_reuses_identical_upstream_graph_state_and_candidate():
     scenario = ReplayDataManager().load_scenario("SCENARIO-GATE-UNCONFIRMED")
     workflow = VolAgentWorkflow()

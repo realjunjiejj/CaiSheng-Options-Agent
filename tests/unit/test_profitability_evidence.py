@@ -14,8 +14,12 @@ from volagent.evaluation.profitability import (
     outcomes_from_closed_trades,
     write_economic_evidence_receipt,
 )
-from volagent.ui.pages.scoreboard import evidence_ladder_rows, trade_story_html
-from volagent.ui.pages.scoreboard import account_truth_html
+from volagent.ui.pages.scoreboard import (
+    competition_evidence_pending_html,
+    controlled_validation_html,
+    evidence_ladder_rows,
+    trade_story_html,
+)
 
 
 def test_profitability_report_never_blends_evidence_tiers():
@@ -307,7 +311,7 @@ def test_judge_ladder_labels_economic_claims_by_evidence_quality():
     assert "0 governed broker-confirmed closed trades" in rows[2]["Coverage"]
 
 
-def test_judge_ladder_uses_full_account_pnl_as_the_alpaca_headline():
+def test_evidence_receipt_uses_full_account_pnl_as_the_alpaca_headline():
     receipt = build_economic_evidence(
         replay_results={},
         historical_results={},
@@ -322,12 +326,6 @@ def test_judge_ladder_uses_full_account_pnl_as_the_alpaca_headline():
     assert "full account" in row["Coverage"].lower()
     assert "governed closed-trade P&L: $+0.00" in row["Permitted conclusion"]
 
-    markup = account_truth_html(receipt)
-    assert "FULL ALPACA ACCOUNT P&amp;L" in markup
-    assert "$-11,731.90" in markup
-    assert "GOVERNED CLOSED-TRADE P&amp;L" in markup
-    assert "$+0.00" in markup
-
 
 def test_scoreboard_keeps_dense_evidence_hidden_by_default():
     source = (Path(__file__).parents[2] / "src/volagent/ui/pages/scoreboard.py").read_text()
@@ -336,6 +334,7 @@ def test_scoreboard_keeps_dense_evidence_hidden_by_default():
     assert 'st.markdown("## Economic Evidence Ladder")' not in source
     assert 'st.markdown("## Controlled Ablation Evidence")' not in source
     assert 'st.markdown("### Ablation ladder")' not in source
+    assert "ALPACA ACCOUNT TRUTH" not in source
 
 
 def test_economic_evidence_receipt_is_written_atomically(tmp_path):
@@ -486,3 +485,31 @@ def test_trade_story_html_exposes_the_four_judge_answers_above_the_fold():
     assert "HOW MUCH DID IT MAKE?" in markup
     assert "No Alpaca trade closed yet" in markup
     assert "ALPACA PAPER · NO BROKER-CONFIRMED CLOSE" in markup
+
+
+def test_empty_competition_evidence_collapses_to_one_status_line():
+    markup = competition_evidence_pending_html()
+
+    assert "Competition evidence pending" in markup
+    assert "0 broker-confirmed closed trades" in markup
+    assert "0 settled benchmark comparisons" in markup
+    assert "WHAT DID IT TRADE?" not in markup
+    assert "LOCKED POLICY TEST" not in markup
+
+
+def test_controlled_validation_is_concise_and_claim_safe():
+    markup = controlled_validation_html(
+        {"net_pnl": 2044.0, "trades_count": 4},
+        [
+            {
+                "Model Benchmark": "CaiSheng (Full)",
+                "risk_breaches_value": 0,
+            }
+        ],
+    )
+
+    assert "$+2,044" in markup
+    assert "4" in markup
+    assert "0" in markup
+    assert "Synthetic functional replay" in markup
+    assert "not competition P&amp;L" in markup

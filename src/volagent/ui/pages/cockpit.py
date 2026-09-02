@@ -2,7 +2,6 @@ import json
 import html
 import streamlit as st
 
-from volagent.ui.charts import create_alpaca_equity_chart
 from volagent.competition import read_competition_status
 from volagent.config import VolAgentSettings, load_config
 from volagent.data.alpaca_mcp import AlpacaMCPService
@@ -281,132 +280,12 @@ def render_cockpit_page() -> None:
         else "Awaiting verified NAV"
     )
 
-    # 2. Continuous Canvas Dashboard Layout (Emil Kowalski Open Studio)
-    col_main, col_side = st.columns([2.35, 1.0])
-
-    with col_main:
-        # Broker Mandate Governance Envelope Strip (Clean integrated line)
-        mandate_banner_html = """<div class="cs-mandate-banner">
-<div style="display:flex; align-items:center; gap:8px;">
-    <span style="font-size:1.1rem;">⚖</span>
-    <span><strong>Broker Mandate:</strong> $100K Starting NAV · Max Risk/Trade &le; 0.5% ($500) · 1 Entry/Day · Sector Concentration Gate Active</span>
-</div>
-<div style="font-family:'JetBrains Mono',monospace; font-size:0.75rem; color:#64748B;">
-    Universe: <strong style="color:#0F172A;">SPY · QQQ · IWM · AAPL · NVDA · TSLA</strong> &nbsp;|&nbsp; Window: <strong style="color:#0F172A;">10:15–14:30 ET</strong>
-</div>
-</div>"""
-        st.markdown(mandate_banner_html, unsafe_allow_html=True)
-
-        # Mandate Portfolio Performance Headline (NO CARD BOX - PURE DATA)
-        display_equity = float(eq) if snapshot_verified and eq > 0 else float(start_nav)
-        portfolio_html = f"""<div style="margin-bottom: 8px;">
-<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 4px;">
-    <div>
-        <div style="font-size:0.7rem; text-transform:uppercase; font-family:'JetBrains Mono',monospace; font-weight:700; color:#94A3B8; letter-spacing:0.06em;">Mandate Portfolio Equity</div>
-        <div style="display:flex; align-items:baseline; gap:12px; margin-top:2px;">
-            <span style="font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; font-size:2.6rem; font-weight:900; color:#0F172A; letter-spacing:-0.03em;">${display_equity:,.2f}</span>
-            <span style="font-family:'JetBrains Mono',monospace; font-size:0.75rem; font-weight:700; color:#059669; background:#ECFDF5; border:1px solid #A7F3D0; padding:2px 8px; border-radius:9999px;">0.00% Net Drawdown (HWM: $100K)</span>
-        </div>
-    </div>
-    <div style="display:flex; gap:16px; font-size:0.75rem; font-weight:600; color:#94A3B8;">
-        <span style="color:#0F172A; font-weight:700; border-bottom:2px solid #F59E0B; padding-bottom:2px;">1D</span>
-        <span>1M</span>
-        <span>1Y</span>
-        <span>Competition</span>
-    </div>
-</div>
-<div style="font-size:0.72rem; color:#94A3B8; font-family:'JetBrains Mono',monospace;">Paper Account: PA39Y90PEKHB &middot; Last Sync: September 02, 02:40 PM +08</div>
-</div>"""
-        st.markdown(portfolio_html, unsafe_allow_html=True)
-
-        fig_equity = create_alpaca_equity_chart(current_equity=display_equity)
-        st.plotly_chart(fig_equity, width="stretch", config={"displayModeBar": False})
-
-        # Balances & Risk Capacity Strip (Open typographic row, NO BOXES)
-        buying_power_val = f"${snap.buying_power:,.2f}" if snapshot_verified and snap.buying_power else "$400,000.00"
-        cash_val = f"${snap.cash:,.2f}" if snapshot_verified and snap.cash else f"${start_nav:,.2f}"
-        balances_html = f"""<div style="border-top:1px solid #F1F5F9; border-bottom:1px solid #F1F5F9; padding:16px 0; margin:18px 0 24px 0; display:grid; grid-template-columns:repeat(3, 1fr); gap:24px; font-family:'JetBrains Mono',monospace;">
-<div>
-    <div style="font-size:0.68rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">Buying Power</div>
-    <div style="font-size:1.35rem; font-weight:800; color:#0F172A; margin-top:2px;">{buying_power_val}</div>
-    <div style="font-size:0.68rem; color:#64748B; margin-top:2px;">4x Reg-T Leverage</div>
-</div>
-<div>
-    <div style="font-size:0.68rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">Cash Balance</div>
-    <div style="font-size:1.35rem; font-weight:800; color:#0F172A; margin-top:2px;">{cash_val}</div>
-    <div style="font-size:0.68rem; color:#64748B; margin-top:2px;">Unencumbered</div>
-</div>
-<div>
-    <div style="font-size:0.68rem; color:#94A3B8; text-transform:uppercase; font-weight:700;">Reserved Risk</div>
-    <div style="font-size:1.35rem; font-weight:800; color:#0284C7; margin-top:2px;">$0.00 <span style="font-size:0.75rem; color:#94A3B8; font-weight:500;">/ $500</span></div>
-    <div style="font-size:0.68rem; color:#059669; font-weight:600; margin-top:2px;">100% Free Capacity</div>
-</div>
-</div>"""
-        st.markdown(balances_html, unsafe_allow_html=True)
-
-    with col_side:
-        # Clean Integrated Right Metadata Pane (Divided by single vertical rule)
-        mcp_html = """<div style="border-left:1px solid #E2E8F0; padding-left:24px; display:flex; flex-direction:column; gap:24px;">
-<div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <span style="font-family:'JetBrains Mono',monospace; font-size:0.72rem; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:0.06em;">FastMCP Gateway</span>
-        <span style="background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; font-family:'JetBrains Mono',monospace; font-size:0.65rem; font-weight:700; padding:2px 8px; border-radius:9999px;">ACTIVE</span>
-    </div>
-    <div style="font-size:0.75rem; color:#475569; display:flex; flex-direction:column; gap:6px;">
-        <div style="display:flex; justify-content:space-between;">
-            <span>Endpoint:</span>
-            <strong style="color:#0F172A; font-family:'JetBrains Mono',monospace;">paper-api.alpaca.markets</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between;">
-            <span>Protocol:</span>
-            <strong style="color:#0F172A; font-family:'JetBrains Mono',monospace;">FastMCP SSE / JSON-RPC</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between;">
-            <span>Account ID:</span>
-            <strong style="color:#64748B; font-family:'JetBrains Mono',monospace;">PA39Y90PEKHB</strong>
-        </div>
-        <div style="display:flex; justify-content:space-between;">
-            <span>Order Gate:</span>
-            <strong style="color:#059669; font-family:'JetBrains Mono',monospace;">FAIL-CLOSED ENABLED</strong>
-        </div>
-    </div>
-    <div style="margin-top:14px; padding-top:10px; border-top:1px solid #F1F5F9; font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:#475569; display:flex; flex-direction:column; gap:3px;">
-        <div style="color:#94A3B8; font-weight:700; text-transform:uppercase; font-size:0.65rem; margin-bottom:2px;">Registered MCP Tools</div>
-        <div style="color:#059669; font-weight:600;">✓ get_account_summary</div>
-        <div style="color:#059669; font-weight:600;">✓ list_positions</div>
-        <div style="color:#059669; font-weight:600;">✓ get_market_clock</div>
-        <div style="color:#059669; font-weight:600;">✓ get_order_status</div>
-    </div>
-</div>
-
-<div style="padding-top:18px; border-top:1px solid #E2E8F0;">
-    <div style="font-family:'JetBrains Mono',monospace; font-size:0.72rem; font-weight:800; color:#64748B; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px;">
-        Reconciliation Proof
-    </div>
-    <div style="display:flex; flex-direction:column; gap:8px; font-size:0.75rem;">
-        <div style="display:flex; justify-content:space-between;">
-            <span style="color:#475569;">SQLite Ledger Match</span>
-            <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:#059669;">100% IDEMPOTENT</span>
-        </div>
-        <div style="display:flex; justify-content:space-between;">
-            <span style="color:#475569;">SHA-256 Fingerprint</span>
-            <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:#059669;">VERIFIED</span>
-        </div>
-        <div style="display:flex; justify-content:space-between;">
-            <span style="color:#475569;">Orphan Order Check</span>
-            <span style="font-family:'JetBrains Mono',monospace; font-weight:700; color:#059669;">0 ORPHANS</span>
-        </div>
-    </div>
-</div>
-</div>"""
-        st.markdown(mcp_html, unsafe_allow_html=True)
-
-    # 3. Cockpit Operator & Risk Controls
+    # 2. Broker-derived operational state. No fallback account figures are rendered.
     cockpit_html = f"""<div class="sd-card-dark" style="margin-bottom: 24px;">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
 <div>
-<div style="font-size: 1.4em; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">🏛️ Capital Command & Autonomous Cockpit</div>
-<div style="color: #64748B; font-size: 0.88em; margin-top: 4px;">Authoritative Alpaca paper portfolio mandate, live risk gates, and operational receipts.</div>
+<div style="font-size: 1.4em; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Operations</div>
+<div style="color: #64748B; font-size: 0.88em; margin-top: 4px;">Broker state, autonomy controls and deterministic risk limits.</div>
 </div>
 <span class="pill-badge {halt_badge_class}">{halt_text}</span>
 </div>
@@ -470,18 +349,16 @@ def render_cockpit_page() -> None:
         paper_account_id=snap.account_id if snapshot_verified else None,
     )
 
-    # 3. Alpaca sponsor-technology Lockbox and operational receipts
+    # 3. Alpaca integration checks and operational receipts
     st.markdown("""<div style="font-size: 1.2em; font-weight: 800; color: #0F172A; margin: 24px 0 12px 0;">
-🔐 Alpaca Technology Lockbox
+Alpaca integration checks
 </div>""", unsafe_allow_html=True)
 
     st.caption(
-        "A judge-facing proof bundle—not an Alpaca product. It verifies Alpaca's "
-        "official CLI, official MCP Server V2, and official agent skills against "
-        "the paper environment. The sponsor MCP process excludes the trading "
-        "toolset, so it cannot bypass CaiSheng's execution gateway."
+        "CaiSheng-generated verification—not an Alpaca product. Checks the CLI, "
+        "MCP Server V2 and paper-only order boundary."
     )
-    if st.button("Verify Official Alpaca Lockbox", type="primary", width="stretch"):
+    if st.button("Run Alpaca integration checks", type="primary", width="stretch"):
         with st.spinner("Running official CLI diagnostics and MCP V2 discovery…"):
             st.session_state["alpaca_lockbox_receipt"] = run_alpaca_technology_lockbox(
                 config
@@ -505,12 +382,12 @@ def render_cockpit_page() -> None:
                 "remain read-only and paper-only."
             )
         else:
-            st.error("The Alpaca Technology Lockbox failed closed. Inspect the receipt.")
-        with st.expander("Inspect sanitized Lockbox receipt", expanded=False):
+            st.error("Alpaca integration checks failed closed. Inspect the receipt.")
+        with st.expander("Inspect sanitized verification receipt", expanded=False):
             st.json(lockbox)
 
     st.markdown("""<div style="font-size: 1.05em; font-weight: 800; color: #0F172A; margin: 20px 0 10px 0;">
-⚡ CaiSheng Execution Proofs
+Execution diagnostics
 </div>""", unsafe_allow_html=True)
 
     c_pref, c_rec, c_mcp, c_audit = st.columns(4)
@@ -568,7 +445,7 @@ def render_cockpit_page() -> None:
     )
     underlyings_display = " · ".join(risk_envelope.underlying_symbols) or "NONE"
     st.markdown(f"""<div style="font-size: 1.15em; font-weight: 800; color: #0F172A; margin: 24px 0 10px 0;">
-🛡️ Broker-Authoritative Risk Envelope
+Broker risk envelope
 </div>
 <div style="border:1px solid #E2E8F0; border-left:4px solid {mode_color}; background:#FFFFFF; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,0.04); padding:18px 22px;">
 <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(165px,1fr)); gap:14px; font-family:'JetBrains Mono',monospace;">
@@ -613,7 +490,7 @@ def render_cockpit_page() -> None:
 
     with c_dec:
         st.markdown("""<div style="font-size: 1.1em; font-weight: 800; color: #0F172A; margin-bottom: 10px;">
-📜 Immutable Decision Records (caisheng.decision.v1)
+Decision records · caisheng.decision.v1
 </div>""", unsafe_allow_html=True)
         decisions = ledger.list_decision_records()
         if not decisions:
@@ -638,7 +515,7 @@ def render_cockpit_page() -> None:
 
     with c_trades:
         st.markdown("""<div style="font-size: 1.1em; font-weight: 800; color: #0F172A; margin-bottom: 10px;">
-💼 Closed-Trade Accounting & P&L Journal
+Closed trades
 </div>""", unsafe_allow_html=True)
         closed = ledger.list_closed_trades()
         if not closed:
@@ -657,7 +534,7 @@ def render_cockpit_page() -> None:
 
     # 5. Shadow-Book Counterfactual Comparison
     st.markdown("""<div style="font-size: 1.1em; font-weight: 800; color: #0F172A; margin-bottom: 10px;">
-🔮 Shadow-Book Counterfactual Strategy Analysis
+Benchmark outcomes
 </div>""", unsafe_allow_html=True)
     shadow_records = ledger.list_shadow_book_records()
     if not shadow_records:

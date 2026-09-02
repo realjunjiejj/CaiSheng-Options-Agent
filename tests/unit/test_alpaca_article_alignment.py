@@ -126,12 +126,12 @@ def test_competition_config_explicitly_selects_conservative_alpaca_feeds():
 
 
 def test_public_judge_app_exposes_only_credential_free_workspaces():
-    assert judge_workspaces(public_read_only=True) == ("Agent", "Evidence")
+    assert judge_workspaces(public_read_only=True) == ("Overview", "Agent", "Results")
     assert judge_workspaces(public_read_only=False) == (
-        "Command",
+        "Overview",
         "Agent",
-        "Paper Trade",
-        "Evidence",
+        "Operations",
+        "Results",
     )
 
 
