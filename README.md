@@ -1,4 +1,4 @@
-# ⚡ CaiSheng (财神) · Auditable Multi-Agent Options Alpha
+# ⚡ CaiSheng · Auditable Multi-Agent Options Alpha
 
 > **Autonomous multi-agent options volatility trading desk built for the Alpaca Options Alpha Hackathon (Track 02).**  
 > Trades movement only when the quantified edge survives adversarial multi-agent debate, governed by a 20-point deterministic risk engine.
