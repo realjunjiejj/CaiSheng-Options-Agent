@@ -14,7 +14,7 @@ def test_streamlit_app_lifecycle_and_symbol_switching():
     assert len(at.exception) == 0
 
     overview = " ".join(str(markdown.value) for markdown in at.markdown)
-    assert "Trade movement only when the edge survives debate" in overview
+    assert "DECISION PATH" in overview
 
     at.radio[0].set_value("Operations")
     at.run()
@@ -64,7 +64,7 @@ def test_public_judge_mode_is_credential_free_and_read_only(monkeypatch):
     assert "Approve Plan Token" not in button_labels
     assert "Execute in Local Simulator" not in button_labels
     rendered = " ".join(str(markdown.value) for markdown in at.markdown)
-    assert "Trade movement only when the edge survives debate" in rendered
+    assert "DECISION PATH" in rendered
     assert "Trading API" in rendered
     assert "FastMCP" in rendered
 

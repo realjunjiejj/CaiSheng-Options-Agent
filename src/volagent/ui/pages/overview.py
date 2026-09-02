@@ -17,17 +17,6 @@ def judge_overview_html(
     """Return the one-screen product and judging narrative."""
     universe = " · ".join(html.escape(symbol) for symbol in symbols)
     return f"""<main class="cs-overview">
-<section class="cs-overview-hero">
-<div class="cs-overview-kicker">VOLATILITY-FIRST OPTIONS ALPHA</div>
-<h1>Trade movement only when the edge survives debate.</h1>
-<p>CaiSheng compares executable implied movement with a calibrated forecast, lets opposing agents argue the volatility case, then gives deterministic code the final word on risk and execution.</p>
-<div class="cs-overview-stats" aria-label="CaiSheng operating mandate">
-<div><strong>4</strong><span>specialist roles</span></div>
-<div><strong>20</strong><span>risk checks</span></div>
-<div><strong>${hard_risk_dollars:,.0f}</strong><span>hard risk / trade</span></div>
-<div><strong>{max_entries_per_day}</strong><span>new entry / day</span></div>
-</div>
-</section>
 
 <section class="cs-overview-section">
 <div class="cs-overview-heading"><span>DECISION PATH</span><small>One auditable chain from market data to broker receipt</small></div>

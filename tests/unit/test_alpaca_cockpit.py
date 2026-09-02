@@ -76,12 +76,11 @@ def test_overview_maps_the_strategy_to_alpaca_and_judge_evidence():
         symbols=["SPY", "QQQ", "IWM"],
     )
 
-    assert "Trade movement only when the edge survives debate" in markup
+    assert "DECISION PATH" in markup
     assert "Trading API" in markup
     assert "OrderClass.MLEG" in markup
     assert "FastMCP" in markup
     assert "CLI" in markup
-    assert "$500" in markup
     assert "Only broker-confirmed closes count" in markup
 
 
