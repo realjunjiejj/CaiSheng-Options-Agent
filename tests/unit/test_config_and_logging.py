@@ -18,7 +18,7 @@ def test_secret_redactor_handles_keys_lists_and_provider_formats():
         "api_key": "PK1234567890123456",
         "nested": [
             {"user": "alice", "token": "sk-12345678901234567890"},
-            ("sensitive_string", "AIzaSyD-1234567890123456789012345678901"),
+            ("sensitive_string", "AIza" + "MOCK_KEY_REDACTED_FOR_TESTS_1234567"),
         ],
     }
 
