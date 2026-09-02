@@ -46,9 +46,9 @@ htmlcov/
 coverage.xml
 output/playwright/
 .tmp/
-video/out/
+video/
 video_submission/
-submission/CaiSheng_Judge_Deck/
+submission/
 
 # Databases & Ledgers
 *.db
