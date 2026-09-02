@@ -33,7 +33,8 @@
         "magnitude_relevance": "High event uncertainty; large variance dispersion expected.",
         "numeric_value": 0.85,
         "units": "index",
-        "confidence": 0.90
+        "confidence": 0.90,
+        "observed_at": "2024-08-28T19:45:00Z"
       },
       {
         "evidence_id": "NVDA-EV-02",
@@ -42,7 +43,165 @@
         "magnitude_relevance": "High dispersion indicates market lack of consensus on data center gross margins.",
         "numeric_value": 0.24,
         "units": "spread_pct",
-        "confidence": 0.95
+        "confidence": 0.95,
+        "observed_at": "2024-08-28T19:45:00Z"
+      }
+    ],
+    "execution_assumptions": {
+      "fee_per_contract": 0.65,
+      "slippage_per_contract": 0.02,
+      "multiplier": 100
+    },
+    "option_chain": [
+      {
+        "symbol": "NVDA240830C00113000",
+        "underlying_symbol": "NVDA",
+        "option_type": "call",
+        "strike": 113.0,
+        "expiration": "2024-08-30",
+        "bid": 12.80,
+        "ask": 13.20,
+        "bid_size": 50,
+        "ask_size": 50,
+        "volume": 200,
+        "open_interest": 600,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
+      },
+      {
+        "symbol": "NVDA240830P00113000",
+        "underlying_symbol": "NVDA",
+        "option_type": "put",
+        "strike": 113.0,
+        "expiration": "2024-08-30",
+        "bid": 0.60,
+        "ask": 0.80,
+        "bid_size": 50,
+        "ask_size": 50,
+        "volume": 150,
+        "open_interest": 400,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
+      },
+      {
+        "symbol": "NVDA240830C00119000",
+        "underlying_symbol": "NVDA",
+        "option_type": "call",
+        "strike": 119.0,
+        "expiration": "2024-08-30",
+        "bid": 7.20,
+        "ask": 7.60,
+        "bid_size": 50,
+        "ask_size": 50,
+        "volume": 350,
+        "open_interest": 900,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
+      },
+      {
+        "symbol": "NVDA240830P00119000",
+        "underlying_symbol": "NVDA",
+        "option_type": "put",
+        "strike": 119.0,
+        "expiration": "2024-08-30",
+        "bid": 1.10,
+        "ask": 1.30,
+        "bid_size": 50,
+        "ask_size": 50,
+        "volume": 280,
+        "open_interest": 750,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
+      },
+      {
+        "symbol": "NVDA240830C00125500",
+        "underlying_symbol": "NVDA",
+        "option_type": "call",
+        "strike": 125.5,
+        "expiration": "2024-08-30",
+        "bid": 3.75,
+        "ask": 3.95,
+        "bid_size": 100,
+        "ask_size": 100,
+        "volume": 1200,
+        "open_interest": 3500,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
+      },
+      {
+        "symbol": "NVDA240830P00125500",
+        "underlying_symbol": "NVDA",
+        "option_type": "put",
+        "strike": 125.5,
+        "expiration": "2024-08-30",
+        "bid": 3.75,
+        "ask": 3.95,
+        "bid_size": 100,
+        "ask_size": 100,
+        "volume": 1100,
+        "open_interest": 3200,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
+      },
+      {
+        "symbol": "NVDA240830C00132000",
+        "underlying_symbol": "NVDA",
+        "option_type": "call",
+        "strike": 132.0,
+        "expiration": "2024-08-30",
+        "bid": 1.20,
+        "ask": 1.40,
+        "bid_size": 50,
+        "ask_size": 50,
+        "volume": 400,
+        "open_interest": 850,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
+      },
+      {
+        "symbol": "NVDA240830P00132000",
+        "underlying_symbol": "NVDA",
+        "option_type": "put",
+        "strike": 132.0,
+        "expiration": "2024-08-30",
+        "bid": 7.30,
+        "ask": 7.70,
+        "bid_size": 50,
+        "ask_size": 50,
+        "volume": 320,
+        "open_interest": 700,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
+      },
+      {
+        "symbol": "NVDA240830C00138000",
+        "underlying_symbol": "NVDA",
+        "option_type": "call",
+        "strike": 138.0,
+        "expiration": "2024-08-30",
+        "bid": 0.50,
+        "ask": 0.65,
+        "bid_size": 50,
+        "ask_size": 50,
+        "volume": 250,
+        "open_interest": 550,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
+      },
+      {
+        "symbol": "NVDA240830P00138000",
+        "underlying_symbol": "NVDA",
+        "option_type": "put",
+        "strike": 138.0,
+        "expiration": "2024-08-30",
+        "bid": 12.80,
+        "ask": 13.20,
+        "bid_size": 50,
+        "ask_size": 50,
+        "volume": 180,
+        "open_interest": 480,
+        "quote_time": "2024-08-28T19:45:00Z",
+        "vendor_implied_vol": 0.65
       }
     ]
   },
@@ -50,6 +209,18 @@
     "exit_spot": 117.50,
     "exit_time": "2024-08-29T14:00:00Z",
     "realized_abs_move_pct": 0.0637,
-    "post_event_atm_iv": 0.48
+    "post_event_atm_iv": 0.48,
+    "exit_option_quotes": {
+      "NVDA240830C00113000": {"bid": 4.45, "ask": 4.65, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48},
+      "NVDA240830P00113000": {"bid": 0.05, "ask": 0.15, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48},
+      "NVDA240830C00119000": {"bid": 0.35, "ask": 0.55, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48},
+      "NVDA240830P00119000": {"bid": 1.95, "ask": 2.15, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48},
+      "NVDA240830C00125500": {"bid": 0.02, "ask": 0.08, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48},
+      "NVDA240830P00125500": {"bid": 7.95, "ask": 8.05, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48},
+      "NVDA240830C00132000": {"bid": 0.01, "ask": 0.03, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48},
+      "NVDA240830P00132000": {"bid": 14.40, "ask": 14.60, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48},
+      "NVDA240830C00138000": {"bid": 0.01, "ask": 0.02, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48},
+      "NVDA240830P00138000": {"bid": 20.40, "ask": 20.60, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.48}
+    }
   }
 }

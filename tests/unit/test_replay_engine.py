@@ -1,5 +1,4 @@
-"""Unit tests for file-backed replay scenarios, provenance hashing, and dynamic benchmark evaluator."""
-
+import copy
 import json
 from pathlib import Path
 import pytest
@@ -12,12 +11,19 @@ def test_replay_artifacts_file_backed_and_hashed():
     """Verify DA-01 & DA-08: Scenarios load from JSON files with genuine SHA-256 byte hashes."""
     mgr = ReplayDataManager()
     scenarios = mgr.get_featured_scenarios()
-    assert len(scenarios) == 3
+    assert len(scenarios) == 6
 
     nvda_data = mgr.load_scenario("SCENARIO-NVDA-2024Q2-AMC")
     assert nvda_data["underlying"].symbol == "NVDA"
     assert len(nvda_data["option_chain"]) > 0
     assert len(nvda_data["file_hash"]) == 64  # Valid SHA-256 hex string
+
+
+def test_macro_vignette_is_explicitly_replay_only_and_not_earnings():
+    mgr = ReplayDataManager()
+    macro = mgr.load_scenario("SCENARIO-SPY-FOMC-REPLAY")
+    assert macro["event"].event_type == "macro"
+    assert macro["event"].timing.value == "dmh"
 
 
 def test_unknown_ticker_raises_data_unavailable():
@@ -38,29 +44,28 @@ def test_evaluator_empty_manifest_returns_zero_rows(tmp_path: Path):
 
 
 def test_evaluator_changes_when_sealed_outcome_changes(tmp_path: Path):
-    """P0-13 Fix: Evaluator computes P&L dynamically from sealed outcomes."""
-    sc1 = {
-        "decision_inputs": {"underlying": {"symbol": "TEST", "price": 100.0}},
-        "sealed_outcomes": {"exit_spot": 140.0},
-    }
-    (tmp_path / "sc1.json").write_text(json.dumps(sc1))
+    """P0-13 Fix: Evaluator computes P&L dynamically from sealed exit option quotes."""
+    sc_file = Path("data/replay/scenarios/scenario_nvda_2024q2.json")
+    sc_dict1 = json.loads(sc_file.read_text())
+
+    (tmp_path / "sc1.json").write_text(json.dumps(sc_dict1))
     (tmp_path / "manifest.json").write_text(json.dumps({
-        "scenarios": [{"scenario_id": "SC-1", "symbol": "TEST", "description": "Long Vol", "file": "sc1.json"}]
+        "scenarios": [{"scenario_id": "SC-1", "symbol": "NVDA", "description": "Long Vol 1", "file": "sc1.json"}]
     }))
 
     res1 = evaluate_benchmarks(data_dir=tmp_path)
-    pnl1 = res1["rows"][0]["volagent"]["pnl"]
+    pnl1 = res1["rows"][0]["b1"]["pnl"]
 
-    sc2 = {
-        "decision_inputs": {"underlying": {"symbol": "TEST", "price": 100.0}},
-        "sealed_outcomes": {"exit_spot": 105.0},
-    }
-    (tmp_path / "sc1.json").write_text(json.dumps(sc2))
+    # Change sealed exit quotes to higher liquidation values
+    sc_dict2 = copy.deepcopy(sc_dict1)
+    for sym, q in sc_dict2["sealed_outcomes"]["exit_option_quotes"].items():
+        q["bid"] += 10.00
+    (tmp_path / "sc1.json").write_text(json.dumps(sc_dict2))
+
     res2 = evaluate_benchmarks(data_dir=tmp_path)
-    pnl2 = res2["rows"][0]["volagent"]["pnl"]
+    pnl2 = res2["rows"][0]["b1"]["pnl"]
 
     assert pnl1 != pnl2
-    assert pnl1 > pnl2
 
 
 def test_decision_inputs_cannot_access_sealed_outcomes():

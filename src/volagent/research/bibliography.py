@@ -1,4 +1,4 @@
-"""Academic bibliography and quantitative research registry backing VolAgent Alpha."""
+"""Academic bibliography and quantitative research registry backing CaiSheng."""
 
 from dataclasses import dataclass
 from typing import Literal
@@ -52,7 +52,7 @@ RESEARCH_BIBLIOGRAPHY: list[AcademicPaper] = [
         core_concept="Pre-earnings implied volatility run-up followed by instantaneous post-announcement volatility collapse (IV crush).",
         latex_formula=r"\sigma_{\text{post}} = \sigma_{\text{pre}} - \Delta \sigma_{\text{event}}, \quad \Delta \sigma_{\text{event}} \approx 30\% \text{ to } 60\% \text{ of ATM IV}",
         volagent_subsystem="src/volagent/quant/forecast.py & quant/repricing.py",
-        relevance_to_track_2="Underpins VolAgent Alpha's post-earnings IV crush forecast model and multi-leg scenario repricing.",
+        relevance_to_track_2="Underpins CaiSheng's post-earnings IV crush forecast model and multi-leg scenario repricing.",
     ),
     AcademicPaper(
         paper_id="BRENNER-SUBRAHMANYAM-1988",
@@ -104,7 +104,7 @@ RESEARCH_BIBLIOGRAPHY: list[AcademicPaper] = [
         core_concept="Axiomatic foundation of risk measures: Translation Invariance, Sub-additivity, Positive Homogeneity, and Monotonicity.",
         latex_formula=r"\rho(X + Y) \le \rho(X) + \rho(Y) \quad (\text{Sub-additivity})",
         volagent_subsystem="src/volagent/quant/risk_gate.py",
-        relevance_to_track_2="Theoretical basis for VolAgent Alpha's 20-point quantitative risk gate and 1.0% NAV stress drawdown cap.",
+        relevance_to_track_2="Theoretical basis for CaiSheng's 20-point quantitative risk gate and 1.0% NAV stress drawdown cap.",
     ),
     AcademicPaper(
         paper_id="NATENBERG-1994",

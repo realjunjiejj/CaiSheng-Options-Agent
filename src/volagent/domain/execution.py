@@ -1,4 +1,4 @@
-"""Domain models for execution, order planning, and receipts."""
+"""Domain models for execution, order planning, receipts, and broker-verified positions."""
 
 from datetime import date, datetime
 from typing import Any
@@ -28,8 +28,30 @@ class ApprovedLegSnapshot(BaseModel):
     entry_price_assumption: float = Field(ge=0)
 
 
+class VerifiedPositionLeg(BaseModel):
+    """Immutable snapshot of an individual option position leg verified against the broker."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    contract_symbol: str
+    symbol: str
+    qty: int
+    side: str  # "long" or "short"
+    avg_entry_price: float = Field(ge=0)
+
+
+class VerifiedStrategyPositionSnapshot(BaseModel):
+    """Authoritative, timestamped broker position evidence for a strategy before closing."""
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    strategy_id: str
+    symbol: str
+    timestamp: datetime
+    positions: list[VerifiedPositionLeg]
+    evidence_source: str = "alpaca_paper"
+
+
 class OrderPlan(BaseModel):
-    """Immutable, fingerprinted multi-leg options order plan."""
+    """Immutable, fingerprinted multi-leg options order plan with complete identity and exposure keys."""
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     client_order_id: str
@@ -41,6 +63,18 @@ class OrderPlan(BaseModel):
     limit_price: float = Field(gt=0)
     legs: list[ApprovedLegSnapshot]
     fingerprint: str
+    economic_fingerprint: str = ""
+    logical_exposure_key: str = ""
+    execution_fingerprint: str = ""
+    strategy_id: str | None = None
+    decision_id: str = "dec-default"
+    event_id: str = "evt-default"
+    model_version: str = "caisheng-1.0.0"
+    mandate_version: str = "caisheng-mandate-v1"
+    decision_time_bucket: str = ""
+    risk_reservation_ref: str | None = None
+    quote_provenance_id: str | None = None
+    original_entry_intent_id: str | None = None
     broker_target: BrokerTarget = BrokerTarget.SIMULATED_LOCAL
     created_at: datetime
     expires_at: datetime
@@ -62,5 +96,7 @@ class ExecutionReceipt(BaseModel):
     filled_quantity: int = 0
     average_price: float | None = None
     fingerprint: str
+    logical_exposure_key: str = ""
     raw_broker_response: dict[str, Any] = Field(default_factory=dict)
     rejection_reason: str | None = None
+    reconciliation_evidence_id: str | None = None

@@ -1,4 +1,4 @@
-"""System prompts for specialized VolAgent Alpha agents."""
+"""System prompts for specialized CaiSheng agents."""
 
 EVENT_MAGNITUDE_PROMPT = """You are the Event Magnitude Analyst for an earnings-volatility desk.
 

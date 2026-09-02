@@ -19,6 +19,7 @@ class UnderlyingSnapshot(BaseModel):
     previous_close: float | None = None
     realized_vol_10d: float | None = None
     realized_vol_30d: float | None = None
+    data_feed: str = "unknown"
     provenance: Provenance
 
 
@@ -43,4 +44,5 @@ class OptionContractSnapshot(BaseModel):
     vendor_theta: float | None = None
     vendor_vega: float | None = None
     multiplier: int = 100
+    data_feed: str = "unknown"
     provenance: Provenance

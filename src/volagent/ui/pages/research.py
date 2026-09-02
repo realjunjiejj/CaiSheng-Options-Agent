@@ -1,4 +1,4 @@
-"""Academic Foundations & Quantitative Literature Page for VolAgent Alpha."""
+"""Academic Foundations & Quantitative Literature Page for CaiSheng."""
 
 import streamlit as st
 from volagent.research.bibliography import RESEARCH_BIBLIOGRAPHY, AcademicPaper
@@ -8,9 +8,9 @@ from volagent.ui.theme import ACCENT_IV, LONG_VOL_COLOR, PASS_COLOR, SHORT_VOL_C
 def render_research_page() -> None:
     st.markdown("## 📚 Academic Foundations & Quantitative Literature")
     st.markdown("""
-    **Track 02: Volatility & Event Trading Agents — Mathematical & Theoretical Grounding**  
-    Every quantitative pricing model, shrinkage forecast, tail risk measure, and multi-agent dialectic consensus 
-    mechanism in VolAgent Alpha is derived directly from peer-reviewed financial economics and computer science literature.
+    **Options Alpha: Volatility & Event Trading Agents — Mathematical & Theoretical Grounding**
+    Every quantitative pricing model, shrinkage forecast, tail risk measure, and multi-agent dialectic consensus
+    mechanism in CaiSheng is derived directly from peer-reviewed financial economics and computer science literature.
     """)
 
     # Top summary metrics
@@ -58,21 +58,22 @@ def render_research_page() -> None:
         with st.expander(f"📖 [{p.paper_id}] {p.title} ({p.year}) — {p.authors}", expanded=True):
             st.markdown(f"**Publication:** *{p.journal}* | [DOI / Link]({p.doi_or_url})")
             st.markdown(f"**Core Theoretical Concept:** {p.core_concept}")
-            
+
             st.markdown("**Mathematical Formulation:**")
             st.latex(p.latex_formula)
 
             c_left, c_right = st.columns(2)
             with c_left:
-                st.markdown(f"**VolAgent Subsystem:** `{p.volagent_subsystem}`")
+                st.markdown(f"**CaiSheng Subsystem:** `{p.volagent_subsystem}`")
             with c_right:
-                st.markdown(f"**Track 2 Hackathon Edge:** {p.relevance_to_track_2}")
+                st.markdown(f"**Options Alpha Edge:** {p.relevance_to_track_2}")
 
     st.markdown("---")
 
     # Interactive LaTeX Mathematical Sandbox
-    st.markdown("### 📐 Key Mathematical Proofs in VolAgent Alpha")
-    
+    st.markdown("### 📐 Key Mathematical Proofs in CaiSheng (Options Alpha)")
+
+
     tab1, tab2, tab3, tab4 = st.tabs([
         "1. Brenner-Subrahmanyam IV Inversion",
         "2. James-Stein Shrinkage Forecast",

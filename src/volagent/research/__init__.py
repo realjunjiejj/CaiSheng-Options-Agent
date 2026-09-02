@@ -1,4 +1,4 @@
-"""Research and academic foundations package for VolAgent Alpha."""
+"""Research and academic foundations package for CaiSheng."""
 
 from volagent.research.bibliography import (
     AcademicPaper,

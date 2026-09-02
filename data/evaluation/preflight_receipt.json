@@ -1,0 +1,34 @@
+{
+  "receipt_type": "caisheng.preflight.v1",
+  "generated_at": "2026-09-02T03:40:05.030305+00:00",
+  "overall_status": "HALTED",
+  "account": {
+    "account_id": null,
+    "equity": 0.0,
+    "cash": 0.0,
+    "buying_power": 0.0,
+    "paper_endpoint": "https://paper-api.alpaca.markets"
+  },
+  "checks": [
+    {
+      "check": "paper_trading_mode",
+      "status": "PASS",
+      "details": "Paper trading endpoint strictly enforced (no live money)"
+    },
+    {
+      "check": "account_accessibility",
+      "status": "FAIL",
+      "details": "Account unauthenticated or invalid: Failed to fetch Alpaca account snapshot: ExecutionError: Competition ledger is bound to a different Alpaca paper account."
+    },
+    {
+      "check": "competition_metadata",
+      "status": "PASS",
+      "details": "Competition initial NAV verified at $100,000.00; paper account binding=97eabff0-04e1-401e-aef5-3b7f676a4ee4"
+    },
+    {
+      "check": "halt_state",
+      "status": "FAIL",
+      "details": "Active system halt: System halted by reconciliation: 21 mismatches/orphans detected (report: rec-28f2c7f98f)"
+    }
+  ]
+}

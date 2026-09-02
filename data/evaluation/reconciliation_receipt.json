@@ -1,0 +1,25 @@
+{
+  "receipt_type": "caisheng.daily_reconciliation.v1",
+  "generated_at": "2026-08-31T16:30:45.059296+00:00",
+  "overall_status": "HALTED",
+  "reconciliation_id": "rec-3a6e8a818b",
+  "matched_order_count": 0,
+  "matched_position_count": 0,
+  "orphan_broker_orders": 2,
+  "orphan_broker_positions": 4,
+  "orphan_ledger_positions": 0,
+  "quantity_mismatches": 6,
+  "is_system_halted": true,
+  "raw_report": {
+    "reconciliation_id": "rec-3a6e8a818b",
+    "status": "HALTED",
+    "matched_orders": 0,
+    "matched_positions": 0,
+    "orphan_broker_orders": 2,
+    "orphan_broker_positions": 4,
+    "orphan_ledger_positions": 0,
+    "quantity_mismatches": 6,
+    "is_system_halted": true,
+    "timestamp": "2026-08-31T16:30:45.058176+00:00"
+  }
+}

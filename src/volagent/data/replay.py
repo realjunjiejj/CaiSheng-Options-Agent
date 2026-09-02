@@ -13,8 +13,7 @@ from volagent.errors import DataUnavailableError
 from volagent.provenance import Provenance
 from volagent.quant.pricing import bsm_price
 
-# Project root is 4 levels up: src/volagent/data/replay.py -> project root
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+from volagent.config import PROJECT_ROOT
 REPLAY_DIR = PROJECT_ROOT / "data" / "replay"
 
 
@@ -82,6 +81,11 @@ class ReplayDataManager:
         u_raw = inputs["underlying"]
         e_raw = inputs["event"]
 
+        if e_raw["symbol"] != u_raw["symbol"]:
+            raise DataUnavailableError(
+                f"Scenario symbol mismatch: underlying={u_raw['symbol']} event={e_raw['symbol']}."
+            )
+
         dec_dt = datetime.fromisoformat(e_raw["decision_time"]).astimezone(timezone.utc)
         event_dt = datetime.fromisoformat(e_raw["event_time"]).astimezone(timezone.utc)
         exit_dt = datetime.fromisoformat(e_raw["exit_time"]).astimezone(timezone.utc)
@@ -110,6 +114,7 @@ class ReplayDataManager:
         event = EarningsEvent(
             event_id=e_raw["event_id"],
             symbol=e_raw["symbol"],
+            event_type=e_raw.get("event_type", "earnings"),
             fiscal_period=e_raw.get("fiscal_period") or e_raw.get("fiscal_quarter", "Q2"),
             event_time=event_dt,
             timing=EventTiming(e_raw["timing"]),
@@ -121,7 +126,9 @@ class ReplayDataManager:
 
         evidence_items = []
         for ev in inputs.get("evidence", []):
-            obs_dt = datetime.fromisoformat(ev["observed_at"]).astimezone(timezone.utc) if "observed_at" in ev else dec_dt
+            if "observed_at" not in ev:
+                raise DataUnavailableError(f"Evidence item {ev.get('evidence_id', '<unknown>')} is missing observed_at.")
+            obs_dt = datetime.fromisoformat(ev["observed_at"]).astimezone(timezone.utc)
             evidence_items.append(
                 EvidenceItem(
                     evidence_id=ev["evidence_id"],
@@ -131,18 +138,42 @@ class ReplayDataManager:
                     numeric_value=ev.get("numeric_value"),
                     units=ev.get("units"),
                     confidence=ev.get("confidence", 0.8),
+                    observed_at=obs_dt,
                     provenance=prov,
                 )
             )
 
-        # Build full option chain centered at ATM with conservative synthetic quotes
-        option_chain = self._build_synthetic_option_chain(
-            symbol=u_raw["symbol"],
-            spot=u_raw["price"],
-            as_of=dec_dt,
-            provenance=prov,
-            is_stale=("stale" in target["file"]),
-        )
+        # Build or deserialize option chain
+        option_chain = []
+        if "option_chain" in inputs and inputs["option_chain"]:
+            for opt in inputs["option_chain"]:
+                option_underlying = opt.get("underlying_symbol", u_raw["symbol"])
+                if option_underlying != u_raw["symbol"]:
+                    raise DataUnavailableError(
+                        f"Option {opt['symbol']} underlying {option_underlying} does not match {u_raw['symbol']}."
+                    )
+                exp_d = date.fromisoformat(opt["expiration"]) if isinstance(opt["expiration"], str) else opt["expiration"]
+                q_dt = datetime.fromisoformat(opt["quote_time"]).astimezone(timezone.utc) if isinstance(opt["quote_time"], str) else opt["quote_time"]
+                option_chain.append(
+                    OptionContractSnapshot(
+                        symbol=opt["symbol"],
+                        underlying_symbol=option_underlying,
+                        option_type=OptionType(opt["option_type"].lower()),
+                        strike=float(opt["strike"]),
+                        expiration=exp_d,
+                        bid=float(opt["bid"]),
+                        ask=float(opt["ask"]),
+                        bid_size=int(opt.get("bid_size", 50)),
+                        ask_size=int(opt.get("ask_size", 50)),
+                        volume=int(opt.get("volume", 100)),
+                        open_interest=int(opt.get("open_interest", 500)),
+                        quote_time=q_dt,
+                        vendor_implied_vol=float(opt.get("vendor_implied_vol", 0.65)),
+                        provenance=prov,
+                    )
+                )
+        else:
+            raise DataUnavailableError(f"Scenario {target['scenario_id']} has no point-in-time option_chain artifact.")
 
         return {
             "scenario_id": target["scenario_id"],
@@ -151,7 +182,8 @@ class ReplayDataManager:
             "option_chain": option_chain,
             "evidence": evidence_items,
             "evidence_items": evidence_items,
-            "historical_moves": inputs.get("historical_moves", [0.08, 0.05, 0.12, 0.06]),
+            "historical_moves": inputs.get("historical_moves", []),
+            "execution_assumptions": inputs.get("execution_assumptions", {"fee_per_contract": 0.65, "slippage_per_contract": 0.02, "multiplier": 100}),
             "sealed_outcomes": sealed_outcomes,
             "provenance": prov,
             "file_hash": file_hash,

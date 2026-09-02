@@ -11,6 +11,8 @@ def run_event_magnitude_agent(
     event: EarningsEvent,
     evidence: list[EvidenceItem],
     llm_client: Any = None,
+    *,
+    allow_fallback: bool = True,
 ) -> EventMagnitudeAssessment:
     """Assess event uncertainty and novelty magnitude from point-in-time evidence."""
     valid_ids = {e.evidence_id for e in evidence}
@@ -31,7 +33,7 @@ def run_event_magnitude_agent(
     # If live LLM is provided
     if llm_client is not None:
         try:
-            prompt_input = f"""Event: {event.symbol} {event.fiscal_quarter or ''} at {event.event_time.isoformat()}
+            prompt_input = f"""Event: {event.symbol} {event.fiscal_period or ''} at {event.event_time.isoformat()}
 Evidence items:
 {json.dumps([e.model_dump(mode='json') for e in evidence], indent=2, default=str)}
 """
@@ -45,7 +47,11 @@ Evidence items:
             result.supporting_evidence_ids = grounded_ids
             return result
         except Exception:
-            pass  # Fall back to deterministic evidence synthesizer
+            if not allow_fallback:
+                raise
+            # The legacy direct-call contract remains fail-safe. LangGraph calls
+            # with allow_fallback=False so it can record the fallback explicitly.
+            pass
 
     # Deterministic high-fidelity evidence synthesizer
     evidence_ids = [e.evidence_id for e in evidence if e.evidence_id in valid_ids]

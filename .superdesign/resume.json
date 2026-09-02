@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/": {
+      "targetKind": "existing-ui",
+      "projectId": "633cc412-1902-4eff-abd5-91a8510fab47",
+      "activeDraftId": "02459fd9-0916-456f-8546-abedba50fd37",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "app.py",
+        "src/volagent/ui/theme.py",
+        "src/volagent/ui/charts.py",
+        "src/volagent/ui/pages/cockpit.py",
+        "src/volagent/ui/pages/live_canary.py",
+        "src/volagent/ui/pages/historical_replay.py",
+        "src/volagent/ui/pages/scoreboard.py",
+        "src/volagent/ui/pages/research.py",
+        "src/volagent/ui/pages/rough_vol_simulator.py",
+        "src/volagent/graph/builder.py",
+        "src/volagent/config.py",
+        "src/volagent/domain/enums.py",
+        "src/volagent/execution/alpaca.py:80:261",
+        "src/volagent/execution/alpaca.py:613:988",
+        "src/volagent/execution/ledger.py:360:717",
+        "src/volagent/execution/ledger.py:812:1174"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "2dd59516c1a25f07516e29865cae289b7a16cbdec2ad0266bceef895bd730c77",
+        "app.py": "c6e0911da2d2ff7bfc781b0e84938e491e8c7a4115ad118069e15ce950e0895f",
+        "src/volagent/ui/theme.py": "a53384bf5da012bfea2895db96eb897a55b3a6a26042728e958c0bfc4aae7238",
+        "src/volagent/ui/charts.py": "280259700e6713592d3a692f8973aa5aeb8596a872b06d5a3f0ddc94b5a2d70a",
+        "src/volagent/ui/pages/cockpit.py": "0d247d831bf95f051f31f34784a64edcb83b6eae44e29cd65ab3001982abda56",
+        "src/volagent/ui/pages/live_canary.py": "9921807815d80a187712b1e6ae271c87a736ac3a4a316fe62a9b77b6684002fa",
+        "src/volagent/ui/pages/historical_replay.py": "f2cfcf0fc3cd506f7301ad8639ec175f0b365238b30f7e21f2b9e8f7fd09396b",
+        "src/volagent/ui/pages/scoreboard.py": "364b5be651b8973668f3c73c055fbc38efd94d16f0af0524cf14296ad1053076",
+        "src/volagent/ui/pages/research.py": "a37b22e9b89bebaf75a7438c4fa4bd50d90ae6a6ac3caef79d58689456f3db41",
+        "src/volagent/ui/pages/rough_vol_simulator.py": "5f00dd3567ea9fb97eb4094838a824b4c902b4092635dfe64b01c6443ad13733",
+        "src/volagent/graph/builder.py": "ee77dd1da3c39b65f5fc989cdf4129ff1f72b33207607e108fbc3f560d263e20",
+        "src/volagent/config.py": "d9826c88cb89428d823e8e845cc8682f884b09e10636581b816f4e5ff6bea63e",
+        "src/volagent/domain/enums.py": "0685abf027ae8971a5f24a596bdbedd5a8890b32648eea36b6773a4ccdd5a4e4",
+        "src/volagent/execution/alpaca.py": "32f7d9db9ebc0a47901f862bcba9e8e46da6ac0cd263befce462fbfe20b23654",
+        "src/volagent/execution/ledger.py": "cb31f4d8376560f07006961dc37cc134bffdd6db6607e5f3b81434544532f566"
+      },
+      "components": [
+        {
+          "name": "AlpacaHeroBanner",
+          "id": "55426ba8-d03a-46f6-a4d3-66d094b39c3a",
+          "sourcePath": "app.py"
+        }
+      ],
+      "drafts": {
+        "40c3b737-89e7-4664-9e2d-8b2d2e344122": {
+          "title": "CaiSheng Judge-First Command Cockpit",
+          "visualDirection": "dense institutional judge cockpit with truthful fail-closed states",
+          "currentVersion": 4
+        },
+        "02459fd9-0916-456f-8546-abedba50fd37": {
+          "title": "CaiSheng Command - Operator Session Control Update",
+          "visualDirection": "private fail-closed operator controls in the existing Alpaca-yellow command cockpit",
+          "currentVersion": 1
+        }
+      },
+      "updatedAt": "2026-09-01T14:50:00Z"
+    }
+  }
+}

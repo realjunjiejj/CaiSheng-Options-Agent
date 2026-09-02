@@ -1,317 +1,310 @@
-"""Dynamic benchmark evaluator computing realized P&L and Component Ablation across scenarios."""
+"""Controlled, reproducible component-ablation and benchmark evaluation."""
+
+from __future__ import annotations
 
 import json
 from pathlib import Path
 from typing import Any
 
-from volagent.data.replay import REPLAY_DIR
+from volagent.config import VolAgentSettings, load_config
+from volagent.data.replay import REPLAY_DIR, ReplayDataManager
+from volagent.domain.enums import AbstentionReason, Decision, GateStatus
+from volagent.domain.strategies import StrategyCandidate
+from volagent.evaluation.accounting_oracle import RealizedTradeResult, compute_realized_trade_pnl
+from volagent.graph.builder import VolAgentWorkflow
 
 
-def evaluate_benchmarks(data_dir: Path | str = REPLAY_DIR) -> dict[str, Any]:
-    """Dynamically evaluate synthetic archetypes across benchmark strategies and component ablations."""
+FULL = "CaiSheng (Full)"
+B0 = "B0: NO_TRADE"
+B1 = "B1: ALWAYS_LONG_STRADDLE"
+B2 = "B2: ALWAYS_SHORT_IRON_BUTTERFLY"
+B3 = "B3: FINAL_GOVERNOR_OFF"
+B4 = "B4: QUANT_ONLY"
+MODEL_NAMES = [FULL, B0, B1, B2, B3, B4]
+
+VARIANT_CONTROLS = [
+    {"Model": FULL, "Quant Pipeline": "ON", "Agent Debate": "ON", "Safety Critic": "ON", "Final Governor": "ON"},
+    {"Model": B3, "Quant Pipeline": "ON", "Agent Debate": "ON", "Safety Critic": "ON", "Final Governor": "OFF"},
+    {"Model": B4, "Quant Pipeline": "ON", "Agent Debate": "OFF", "Safety Critic": "DETERMINISTIC", "Final Governor": "ON"},
+]
+
+
+def _empty_result() -> dict[str, Any]:
+    return {
+        "rows": [],
+        "ablation_table": [],
+        "summary": [],
+        "variant_controls": VARIANT_CONTROLS,
+        "evaluation_errors": [],
+        "total_scenarios": 0,
+        "declared_scenarios": 0,
+    }
+
+
+def _candidate_for(result: dict[str, Any], decision: Decision) -> StrategyCandidate | None:
+    return next((candidate for candidate in result.get("candidates", []) if candidate.decision == decision), None)
+
+
+def _abstention_text(value: Any) -> str:
+    if value in (None, AbstentionReason.NONE):
+        return "none"
+    return value.value if hasattr(value, "value") else str(value)
+
+
+def _first_failed_check(result: dict[str, Any]) -> str:
+    report = result.get("risk_report")
+    if report is None:
+        return "unknown"
+    failed = [check.name for check in report.checks if check.status == GateStatus.FAIL]
+    return failed[0] if failed else "none"
+
+
+def _format_trade(trade: RealizedTradeResult) -> tuple[str, str, str, str]:
+    pnl = f"${trade.net_pnl:+.2f}" if trade.net_pnl is not None else "N/A"
+    return trade.entry_description, trade.exit_description, pnl, f"${trade.max_loss:.2f}"
+
+
+def evaluate_benchmarks(
+    data_dir: Path | str = REPLAY_DIR,
+    config: VolAgentSettings | None = None,
+    llm_client: Any = None,
+) -> dict[str, Any]:
+    """Evaluate controlled graph variants and naive strategy baselines.
+
+    Full, B3, and B4 execute the same compiled LangGraph. Only the state flags
+    documented in ``VARIANT_CONTROLS`` differ. B1 and B2 reuse the exact
+    contracts, sizing, repricing, seed, and filtered chain produced by Full.
+    """
     data_path = Path(data_dir)
     manifest_file = data_path / "manifest.json"
     if not manifest_file.exists():
-        return {"rows": [], "ablation_table": [], "summary": []}
+        return _empty_result()
 
     try:
-        with open(manifest_file, "r") as f:
-            manifest = json.load(f)
-    except Exception:
-        return {"rows": [], "ablation_table": [], "summary": []}
+        manifest = json.loads(manifest_file.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        result = _empty_result()
+        result["evaluation_errors"] = [{"scenario_id": "manifest", "error": str(exc)}]
+        return result
 
     scenarios = manifest.get("scenarios", [])
     if not scenarios:
-        return {"rows": [], "ablation_table": [], "summary": []}
+        return _empty_result()
 
-    rows = []
-    ablation_table = []
+    cfg = (config or load_config()).model_copy(deep=True)
+    # Judge replay uses a fixed, seeded scenario budget. It preserves variant
+    # comparability while keeping cold-start latency bounded.
+    cfg.forecast.monte_carlo_scenarios = min(cfg.forecast.monte_carlo_scenarios, 256)
+    replay_mgr = ReplayDataManager(data_dir=data_path)
+    workflow = VolAgentWorkflow(config=cfg, llm_client=llm_client)
 
-    # Aggregators
-    totals = {
-        "VolAgent Alpha": {"pnl": 0.0, "trades": 0, "breaches": 0, "abstentions": 0},
-        "B0: NO_TRADE": {"pnl": 0.0, "trades": 0, "breaches": 0, "abstentions": 0},
-        "B1: ALWAYS_LONG_STRADDLE": {"pnl": 0.0, "trades": 0, "breaches": 0, "abstentions": 0},
-        "B2: ALWAYS_SHORT_IRON_BUTTERFLY": {"pnl": 0.0, "trades": 0, "breaches": 0, "abstentions": 0},
-        "B3: UNGATED_VOLAGENT": {"pnl": 0.0, "trades": 0, "breaches": 0, "abstentions": 0},
-        "B4: QUANT_ONLY": {"pnl": 0.0, "trades": 0, "breaches": 0, "abstentions": 0},
+    aggregates = {
+        name: {
+            "valid_trades": 0,
+            "invalid_attempts": 0,
+            "abstentions": 0,
+            "risk_breaches": 0,
+            "executable_pnl": 0.0,
+        }
+        for name in MODEL_NAMES
     }
+    rows: list[dict[str, Any]] = []
+    ablation_table: list[dict[str, Any]] = []
+    evaluation_errors: list[dict[str, str]] = []
 
-    for sc in scenarios:
-        scenario_file = data_path / sc["file"]
-        if not scenario_file.exists():
+    for scenario_info in scenarios:
+        scenario_id = scenario_info.get("scenario_id") or scenario_info.get("symbol")
+        try:
+            scenario = replay_mgr.load_scenario(scenario_id)
+        except Exception as exc:
+            evaluation_errors.append({"scenario_id": str(scenario_id), "error": str(exc)})
             continue
 
-        with open(scenario_file, "r") as f:
-            data = json.load(f)
+        underlying = scenario["underlying"]
+        event = scenario["event"]
+        exit_quotes = scenario.get("sealed_outcomes", {}).get("exit_option_quotes", {})
+        assumptions = scenario.get("execution_assumptions", {})
+        fee = float(assumptions.get("fee_per_contract", cfg.execution.fee_per_contract))
+        slippage = float(assumptions.get("slippage_per_contract", cfg.execution.slippage_per_contract))
+        multiplier = int(assumptions.get("multiplier", 100))
 
-        inputs = data.get("decision_inputs", {})
-        outcomes = data.get("sealed_outcomes", {})
+        graph_inputs = {
+            "scenario_id": scenario_id,
+            "underlying": underlying,
+            "event": event,
+            "option_chain": scenario["option_chain"],
+            "evidence": scenario.get("evidence", []),
+            "historical_moves": scenario.get("historical_moves", []),
+        }
+        full_result = workflow.run({**graph_inputs, "enable_agent_debate": True, "enable_risk_governor": True})
+        b3_result = workflow.run({**graph_inputs, "enable_agent_debate": True, "enable_risk_governor": False})
+        b4_result = workflow.run({**graph_inputs, "enable_agent_debate": False, "enable_risk_governor": True})
 
-        u_price = float(inputs.get("underlying", {}).get("price", 100.0))
-        symbol = str(sc.get("symbol", inputs.get("underlying", {}).get("symbol", "UNKNOWN")))
-        desc = sc.get("description", sc.get("scenario_id", "Scenario"))
+        full_candidate = full_result.get("approved_candidate")
+        b3_candidate = b3_result.get("approved_candidate")
+        b4_candidate = b4_result.get("approved_candidate")
+        b1_candidate = _candidate_for(full_result, Decision.LONG_STRADDLE)
+        b2_candidate = _candidate_for(full_result, Decision.SHORT_IRON_BUTTERFLY)
 
-        exit_spot = float(outcomes.get("exit_spot", u_price))
-        atm_strike = u_price
+        model_inputs = {
+            FULL: {
+                "decision": full_result.get("final_decision", Decision.NO_TRADE),
+                "candidate": full_candidate,
+                "abstention": _abstention_text(full_result.get("abstention_reason")),
+                "governor_bypassed": False,
+                "risk_reason": _first_failed_check(full_result),
+            },
+            B0: {
+                "decision": Decision.NO_TRADE,
+                "candidate": None,
+                "abstention": "unconditionally_flat",
+                "governor_bypassed": False,
+                "risk_reason": "none",
+            },
+            B1: {
+                "decision": Decision.LONG_STRADDLE if b1_candidate else Decision.NO_TRADE,
+                "candidate": b1_candidate,
+                "abstention": "missing_shared_candidate" if b1_candidate is None else "none",
+                "governor_bypassed": b1_candidate is not None and not event.confirmed,
+                "risk_reason": "event_timing" if b1_candidate is not None and not event.confirmed else "none",
+            },
+            B2: {
+                "decision": Decision.SHORT_IRON_BUTTERFLY if b2_candidate else Decision.NO_TRADE,
+                "candidate": b2_candidate,
+                "abstention": "missing_shared_candidate" if b2_candidate is None else "none",
+                "governor_bypassed": b2_candidate is not None and not event.confirmed,
+                "risk_reason": "event_timing" if b2_candidate is not None and not event.confirmed else "none",
+            },
+            B3: {
+                "decision": b3_result.get("final_decision", Decision.NO_TRADE),
+                "candidate": b3_candidate,
+                "abstention": _abstention_text(b3_result.get("abstention_reason")),
+                "governor_bypassed": bool(b3_result.get("governor_bypassed")),
+                "risk_reason": _first_failed_check(b3_result),
+            },
+            B4: {
+                "decision": b4_result.get("final_decision", Decision.NO_TRADE),
+                "candidate": b4_candidate,
+                "abstention": _abstention_text(b4_result.get("abstention_reason")),
+                "governor_bypassed": False,
+                "risk_reason": _first_failed_check(b4_result),
+            },
+        }
 
-        # Strategy pricing and payoffs from scenario data
-        # Long Straddle: ATM call ask + ATM put ask (~7% ATM straddle debit)
-        straddle_entry_debit = round(u_price * 0.07, 2)
-        straddle_exit_val = round(abs(exit_spot - atm_strike), 2)
-        straddle_pnl = round((straddle_exit_val - straddle_entry_debit) * 100.0, 2)
-        straddle_max_loss = round(straddle_entry_debit * 100.0, 2)
+        scenario_output: dict[str, Any] = {
+            "scenario": f"{underlying.symbol} - {scenario_info.get('description', scenario_id)}",
+            "symbol": underlying.symbol,
+            "underlying_price": underlying.price,
+            "exit_spot": scenario.get("sealed_outcomes", {}).get("exit_spot", underlying.price),
+        }
 
-        # Short Iron Butterfly: 10% wings, ~4% credit
-        wing_width = round(u_price * 0.10, 2)
-        ib_credit = round(u_price * 0.04, 2)
-        move = abs(exit_spot - atm_strike)
-        tail_loss = round(max(0.0, min(move, wing_width)), 2)
-        ib_pnl = round((ib_credit - tail_loss) * 100.0, 2)
-        ib_max_loss = round((wing_width - ib_credit) * 100.0, 2)
+        for model_name in MODEL_NAMES:
+            model = model_inputs[model_name]
+            decision: Decision = model["decision"]
+            candidate: StrategyCandidate | None = model["candidate"]
+            bypassed = bool(model["governor_bypassed"])
+            risk_reason = str(model["risk_reason"])
 
-        # Stale data / risk rejection flag
-        is_stale = "stale" in sc.get("scenario_id", "").lower() or "stale" in desc.lower() or "stale" in sc.get("file", "").lower()
-        is_long_vol = "nvda" in symbol.lower() or "long" in desc.lower()
+            if candidate is None or decision == Decision.NO_TRADE:
+                aggregates[model_name]["abstentions"] += 1
+                entry, exit_value, pnl, max_loss = "—", "—", "$0.00", "$0.00"
+                pnl_value: float | None = 0.0
+                breach = "No"
+                validity = "VALID (Flat)"
+                if model_name in (FULL, B4) and risk_reason != "none":
+                    validity = "VALID (Risk Veto)"
+                elif model_name == B3 and risk_reason != "none":
+                    validity = "VALID (Upstream Veto)"
+            else:
+                trade = compute_realized_trade_pnl(
+                    candidate,
+                    exit_quotes,
+                    fee_per_contract=fee,
+                    slippage_per_contract=slippage,
+                    multiplier=multiplier,
+                    expected_exit_time=event.exit_time,
+                )
+                entry, exit_value, pnl, max_loss = _format_trade(trade)
+                pnl_value = trade.net_pnl
+                breach = f"Yes ({risk_reason})" if bypassed else "No"
+                if bypassed:
+                    aggregates[model_name]["risk_breaches"] += 1
+                if trade.is_valid and trade.net_pnl is not None:
+                    aggregates[model_name]["valid_trades"] += 1
+                    aggregates[model_name]["executable_pnl"] += trade.net_pnl
+                    validity = "COUNTERFACTUAL (Policy Bypassed)" if bypassed else "VALID"
+                else:
+                    aggregates[model_name]["invalid_attempts"] += 1
+                    validity = trade.validity_note
 
-        # ----------------------------------------------------
-        # 1. VolAgent Alpha (Full Neuro-Symbolic System)
-        # ----------------------------------------------------
-        if is_stale:
-            va_dec = "No trade"
-            va_entry = "—"
-            va_exit = "—"
-            va_pnl = 0.0
-            va_max_loss = 0.0
-            va_breach = "No"
-            va_validity = "VALID (Risk Veto)"
-            va_abstain = "STALE_MARKET_DATA"
-            totals["VolAgent Alpha"]["abstentions"] += 1
-        elif is_long_vol:
-            va_dec = "Long straddle"
-            va_entry = f"Ask (${straddle_entry_debit:.2f})"
-            va_exit = f"Bid (${straddle_exit_val:.2f})"
-            va_pnl = straddle_pnl
-            va_max_loss = straddle_max_loss
-            va_breach = "No"
-            va_validity = "VALID"
-            va_abstain = "—"
-            totals["VolAgent Alpha"]["trades"] += 1
-            totals["VolAgent Alpha"]["pnl"] += va_pnl
-        else:  # Short Vol
-            va_dec = "Short butterfly"
-            va_entry = f"Bid (${ib_credit:.2f})"
-            va_exit = f"Ask (${tail_loss:.2f})"
-            va_pnl = ib_pnl
-            va_max_loss = ib_max_loss
-            va_breach = "No"
-            va_validity = "VALID"
-            va_abstain = "—"
-            totals["VolAgent Alpha"]["trades"] += 1
-            totals["VolAgent Alpha"]["pnl"] += va_pnl
+            table_row = {
+                "Scenario": f"{underlying.symbol} ({scenario_info.get('description', scenario_id)})",
+                "Model": model_name,
+                "Decision": decision.value,
+                "Net P&L": pnl,
+                "Max Loss": max_loss,
+                "Risk Breach": breach,
+                "Execution Validity": validity,
+                "Abstention Reason": model["abstention"],
+                "Entry": entry,
+                "Exit": exit_value,
+                "pnl_value": pnl_value,
+            }
+            ablation_table.append(table_row)
 
-        # ----------------------------------------------------
-        # 2. B0: NO_TRADE (Baseline)
-        # ----------------------------------------------------
-        b0_dec = "No trade"
-        b0_entry = "—"
-        b0_exit = "—"
-        b0_pnl = 0.0
-        b0_max_loss = 0.0
-        b0_breach = "No"
-        b0_validity = "VALID"
-        b0_abstain = "Baseline (Flat)"
-        totals["B0: NO_TRADE"]["abstentions"] += 1
+            compact_key = {
+                FULL: "volagent",
+                B0: "b0",
+                B1: "b1",
+                B2: "b2",
+                B3: "b3",
+                B4: "b4",
+            }[model_name]
+            scenario_output[compact_key] = {
+                "decision": decision.value,
+                "pnl": pnl,
+                "pnl_value": pnl_value,
+                "max_loss": max_loss,
+                "status": validity,
+                "breach": breach,
+            }
 
-        # ----------------------------------------------------
-        # 3. B1: ALWAYS_LONG_STRADDLE
-        # ----------------------------------------------------
-        b1_dec = "Long straddle"
-        b1_entry = f"Ask (${straddle_entry_debit:.2f})"
-        b1_exit = f"Bid (${straddle_exit_val:.2f})"
-        b1_pnl = straddle_pnl
-        b1_max_loss = straddle_max_loss
-        b1_breach = "Yes (Stale Quotes)" if is_stale else "No"
-        b1_validity = "INVALID (Stale Data)" if is_stale else "VALID"
-        b1_abstain = "—"
-        totals["B1: ALWAYS_LONG_STRADDLE"]["trades"] += 1
-        totals["B1: ALWAYS_LONG_STRADDLE"]["pnl"] += b1_pnl
-        if is_stale:
-            totals["B1: ALWAYS_LONG_STRADDLE"]["breaches"] += 1
+        rows.append(scenario_output)
 
-        # ----------------------------------------------------
-        # 4. B2: ALWAYS_SHORT_IRON_BUTTERFLY
-        # ----------------------------------------------------
-        b2_dec = "Short butterfly"
-        b2_entry = f"Bid (${ib_credit:.2f})"
-        b2_exit = f"Ask (${tail_loss:.2f})"
-        b2_pnl = ib_pnl
-        b2_max_loss = ib_max_loss
-        b2_breach = "Yes (Stale Quotes)" if is_stale else "No"
-        b2_validity = "INVALID (Stale Data)" if is_stale else "VALID"
-        b2_abstain = "—"
-        totals["B2: ALWAYS_SHORT_IRON_BUTTERFLY"]["trades"] += 1
-        totals["B2: ALWAYS_SHORT_IRON_BUTTERFLY"]["pnl"] += b2_pnl
-        if is_stale:
-            totals["B2: ALWAYS_SHORT_IRON_BUTTERFLY"]["breaches"] += 1
-
-        # ----------------------------------------------------
-        # 5. B3: UNGATED_VOLAGENT (Agent without Risk Governor)
-        # ----------------------------------------------------
-        if is_stale:
-            # Ungated agent attempts trade using invalid stale feeds
-            b3_dec = "Trade Attempted (Ungated)"
-            b3_entry = f"Stale Ask (${straddle_entry_debit:.2f})"
-            b3_exit = f"Counterfactual (${straddle_exit_val:.2f})"
-            # Severe counterfactual penalty for trading through stale venue disconnect
-            b3_pnl = round(straddle_pnl - (u_price * 0.05 * 100.0), 2)
-            b3_max_loss = straddle_max_loss
-            b3_breach = "Yes (Stale Veto Bypassed)"
-            b3_validity = "INVALID (Stale Feeds)"
-            b3_abstain = "None (Gate Disabled)"
-            totals["B3: UNGATED_VOLAGENT"]["trades"] += 1
-            totals["B3: UNGATED_VOLAGENT"]["pnl"] += b3_pnl
-            totals["B3: UNGATED_VOLAGENT"]["breaches"] += 1
-        else:
-            b3_dec = va_dec
-            b3_entry = va_entry
-            b3_exit = va_exit
-            b3_pnl = va_pnl
-            b3_max_loss = va_max_loss
-            b3_breach = "No"
-            b3_validity = "VALID"
-            b3_abstain = "—"
-            totals["B3: UNGATED_VOLAGENT"]["trades"] += 1
-            totals["B3: UNGATED_VOLAGENT"]["pnl"] += b3_pnl
-
-        # ----------------------------------------------------
-        # 6. B4: QUANT_ONLY (Deterministic Model Without LLM Debate)
-        # ----------------------------------------------------
-        if is_stale:
-            b4_dec = "No trade"
-            b4_entry = "—"
-            b4_exit = "—"
-            b4_pnl = 0.0
-            b4_max_loss = 0.0
-            b4_breach = "No"
-            b4_validity = "VALID (Risk Veto)"
-            b4_abstain = "STALE_MARKET_DATA"
-            totals["B4: QUANT_ONLY"]["abstentions"] += 1
-        elif is_long_vol:
-            b4_dec = "Long straddle"
-            b4_entry = f"Ask (${straddle_entry_debit:.2f})"
-            b4_exit = f"Bid (${straddle_exit_val:.2f})"
-            b4_pnl = straddle_pnl
-            b4_max_loss = straddle_max_loss
-            b4_breach = "No"
-            b4_validity = "VALID"
-            b4_abstain = "—"
-            totals["B4: QUANT_ONLY"]["trades"] += 1
-            totals["B4: QUANT_ONLY"]["pnl"] += b4_pnl
-        else:
-            b4_dec = "Short butterfly"
-            b4_entry = f"Bid (${ib_credit:.2f})"
-            b4_exit = f"Ask (${tail_loss:.2f})"
-            b4_pnl = ib_pnl
-            b4_max_loss = ib_max_loss
-            b4_breach = "No"
-            b4_validity = "VALID"
-            b4_abstain = "—"
-            totals["B4: QUANT_ONLY"]["trades"] += 1
-            totals["B4: QUANT_ONLY"]["pnl"] += b4_pnl
-
-        # Append Scenario-Level Ablation Rows
-        scenario_models = [
-            ("VolAgent Alpha (Full)", va_dec, va_entry, va_exit, va_pnl, va_max_loss, va_breach, va_validity, va_abstain),
-            ("B0: NO_TRADE", b0_dec, b0_entry, b0_exit, b0_pnl, b0_max_loss, b0_breach, b0_validity, b0_abstain),
-            ("B1: ALWAYS_LONG_STRADDLE", b1_dec, b1_entry, b1_exit, b1_pnl, b1_max_loss, b1_breach, b1_validity, b1_abstain),
-            ("B2: ALWAYS_SHORT_IRON_BUTTERFLY", b2_dec, b2_entry, b2_exit, b2_pnl, b2_max_loss, b2_breach, b2_validity, b2_abstain),
-            ("B3: UNGATED_VOLAGENT", b3_dec, b3_entry, b3_exit, b3_pnl, b3_max_loss, b3_breach, b3_validity, b3_abstain),
-            ("B4: QUANT_ONLY", b4_dec, b4_entry, b4_exit, b4_pnl, b4_max_loss, b4_breach, b4_validity, b4_abstain),
-        ]
-
-        for mod_name, m_dec, m_ent, m_ext, m_pnl, m_max, m_brk, m_val, m_abs in scenario_models:
-            ablation_table.append({
-                "Scenario": f"{symbol} ({desc})",
-                "Model": mod_name,
-                "Decision": m_dec,
-                "Entry": m_ent,
-                "Exit": m_ext,
-                "Net P&L": f"${m_pnl:+.2f}" if m_dec != "No trade" or m_pnl != 0 else "$0.00",
-                "Max Loss": f"${m_max:.2f}" if m_max > 0 else "$0.00",
-                "Risk Breach": m_brk,
-                "Execution Validity": m_val,
-                "Abstention Reason": m_abs,
-            })
-
-        rows.append({
-            "scenario": f"{symbol} - {desc}",
-            "symbol": symbol,
-            "underlying_price": u_price,
-            "exit_spot": exit_spot,
-            "volagent": {"decision": va_dec, "pnl": va_pnl, "max_loss": va_max_loss, "status": va_validity},
-            "b0": {"pnl": 0.0},
-            "b1": {"pnl": b1_pnl, "max_loss": straddle_max_loss},
-            "b2": {"pnl": b2_pnl, "max_loss": ib_max_loss},
-            "b3": {"pnl": b3_pnl, "breach": b3_breach},
-            "b4": {"pnl": b4_pnl, "status": b4_validity},
+    evaluated_count = len(rows)
+    agent_label = "LLM-backed structured debate" if llm_client is not None else "Deterministic replay-agent debate"
+    roles = {
+        FULL: f"{agent_label} + shared quant pipeline + deterministic safety stack",
+        B0: "Unconditionally flat null benchmark",
+        B1: "Always chooses the shared long-straddle candidate",
+        B2: "Always chooses the shared short-iron-butterfly candidate",
+        B3: "Controlled ablation: only the final deterministic governor is disabled",
+        B4: "Controlled ablation: agent debate disabled; deterministic critic and governor retained",
+    }
+    summary = []
+    for model_name in MODEL_NAMES:
+        aggregate = aggregates[model_name]
+        summary.append({
+            "Model Benchmark": model_name,
+            "Valid Trades": f"{aggregate['valid_trades']}/{evaluated_count}",
+            "Invalid Attempts": f"{aggregate['invalid_attempts']}/{evaluated_count}",
+            "Abstentions": f"{aggregate['abstentions']}/{evaluated_count}",
+            "Risk Breaches": str(aggregate["risk_breaches"]),
+            "Executable Net P&L": f"${aggregate['executable_pnl']:+.2f}",
+            "Component Role": roles[model_name],
+            "pnl_value": round(aggregate["executable_pnl"], 2),
+            "risk_breaches_value": aggregate["risk_breaches"],
+            "valid_trades_value": aggregate["valid_trades"],
         })
-
-    # Summary Aggregations
-    summary = [
-        {
-            "Model Benchmark": "VolAgent Alpha (Full Neuro-Symbolic)",
-            "Trades Taken": f"{totals['VolAgent Alpha']['trades']}/{len(scenarios)}",
-            "Total Net P&L ($)": f"${totals['VolAgent Alpha']['pnl']:+.2f}",
-            "Risk Breaches": f"{totals['VolAgent Alpha']['breaches']}",
-            "Abstention Quality": "100% (Vetoed Stale Feed)",
-            "Component Contribution": "Dialectic Debate + 20-Point Risk Governor",
-        },
-        {
-            "Model Benchmark": "B0: NO_TRADE (Flat Baseline)",
-            "Trades Taken": "0/3",
-            "Total Net P&L ($)": "$0.00",
-            "Risk Breaches": "0",
-            "Abstention Quality": "Always Flat",
-            "Component Contribution": "Zero-Risk Null Benchmark",
-        },
-        {
-            "Model Benchmark": "B1: ALWAYS_LONG_STRADDLE",
-            "Trades Taken": "3/3",
-            "Total Net P&L ($)": f"${totals['B1: ALWAYS_LONG_STRADDLE']['pnl']:+.2f}",
-            "Risk Breaches": f"{totals['B1: ALWAYS_LONG_STRADDLE']['breaches']} (Stale)",
-            "Abstention Quality": "0% (Never Abstains)",
-            "Component Contribution": "Unconditional Long Vol (Negative on Small Moves)",
-        },
-        {
-            "Model Benchmark": "B2: ALWAYS_SHORT_IRON_BUTTERFLY",
-            "Trades Taken": "3/3",
-            "Total Net P&L ($)": f"${totals['B2: ALWAYS_SHORT_IRON_BUTTERFLY']['pnl']:+.2f}",
-            "Risk Breaches": f"{totals['B2: ALWAYS_SHORT_IRON_BUTTERFLY']['breaches']} (Stale)",
-            "Abstention Quality": "0% (Never Abstains)",
-            "Component Contribution": "Unconditional Short Vol (Wing Loss on Jumps)",
-        },
-        {
-            "Model Benchmark": "B3: UNGATED_VOLAGENT (No Risk Gate)",
-            "Trades Taken": f"{totals['B3: UNGATED_VOLAGENT']['trades']}/{len(scenarios)}",
-            "Total Net P&L ($)": f"${totals['B3: UNGATED_VOLAGENT']['pnl']:+.2f}",
-            "Risk Breaches": f"{totals['B3: UNGATED_VOLAGENT']['breaches']} (Stale)",
-            "Abstention Quality": "0% (Fails to Veto Stale)",
-            "Component Contribution": "Ablation: Demonstrates Risk Governor Necessity",
-        },
-        {
-            "Model Benchmark": "B4: QUANT_ONLY (No LLM Debate)",
-            "Trades Taken": f"{totals['B4: QUANT_ONLY']['trades']}/{len(scenarios)}",
-            "Total Net P&L ($)": f"${totals['B4: QUANT_ONLY']['pnl']:+.2f}",
-            "Risk Breaches": f"{totals['B4: QUANT_ONLY']['breaches']}",
-            "Abstention Quality": "100% (Vetoed Stale Feed)",
-            "Component Contribution": "Ablation: Quant baseline without Qualitative LLM Debate",
-        },
-    ]
 
     return {
         "rows": rows,
         "ablation_table": ablation_table,
         "summary": summary,
-        "total_scenarios": len(scenarios),
+        "variant_controls": VARIANT_CONTROLS,
+        "evaluation_errors": evaluation_errors,
+        "total_scenarios": evaluated_count,
+        "declared_scenarios": len(scenarios),
+        "agent_mode": "llm" if llm_client is not None else "deterministic_replay",
+        "monte_carlo_scenarios": cfg.forecast.monte_carlo_scenarios,
     }

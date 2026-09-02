@@ -1,0 +1,20 @@
+# Install for the dedicated caisheng user on one persistent execution host.
+# The host timezone must be America/New_York so Debian cron follows US market time.
+SHELL=/bin/bash
+PATH=/opt/caisheng/.venv/bin:/usr/local/bin:/usr/bin:/bin
+MAILTO=""
+
+# Daily liquid-ETF volatility scan plus confirmed AMC scan. Repeated runs are
+# idempotent and the mandate permits at most one new entry per day. Scans may
+# analyze while disarmed, but only an explicit operator-issued lease can submit.
+20,50 10-14 * * 1-5 /opt/caisheng/scripts/run_persistent_job.sh scan >> /var/log/caisheng/scheduler.log 2>&1
+
+# Confirmed AMC scan during the permitted entry window.
+30 15 * * 1-5 /opt/caisheng/scripts/run_persistent_job.sh scan >> /var/log/caisheng/scheduler.log 2>&1
+
+# Position monitoring is intentionally not scheduled here. The always-on
+# caisheng-monitor.service supervises positions every 20 seconds and restarts on
+# failure. Cron remains responsible only for idempotent scans and reconciliation.
+
+# Two-way broker/ledger reconciliation after the regular close.
+15 16 * * 1-5 /opt/caisheng/scripts/run_persistent_job.sh reconcile >> /var/log/caisheng/scheduler.log 2>&1

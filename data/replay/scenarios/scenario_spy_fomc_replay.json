@@ -1,0 +1,33 @@
+{
+  "scenario_id": "SCENARIO-SPY-FOMC-REPLAY",
+  "symbol": "SPY",
+  "decision_inputs": {
+    "underlying": {"symbol": "SPY", "price": 500.0, "bid": 499.98, "ask": 500.02, "quote_time": "2024-07-31T17:45:00Z", "previous_close": 497.0, "realized_vol_10d": 0.21, "realized_vol_30d": 0.18},
+    "event": {"event_id": "FOMC-REPLAY-2024-07", "event_type": "macro", "symbol": "SPY", "fiscal_period": "FOMC replay", "event_time": "2024-07-31T18:00:00Z", "timing": "dmh", "confirmed": true, "decision_time": "2024-07-31T17:45:00Z", "exit_time": "2024-08-01T17:00:00Z"},
+    "historical_moves": [0.009, 0.012, 0.015, 0.011, 0.018, 0.010],
+    "evidence": [
+      {"evidence_id": "FOMC-REPLAY-EV-01", "category": "macro_schedule", "claim": "Synthetic replay-only FOMC decision timestamp; not a live event feed.", "magnitude_relevance": "scheduled policy uncertainty", "numeric_value": 0.80, "units": "score", "confidence": 1.0, "observed_at": "2024-07-31T17:45:00Z"},
+      {"evidence_id": "FOMC-REPLAY-EV-02", "category": "macro_dispersion", "claim": "Synthetic replay-only rate-path disagreement without a directional price view.", "magnitude_relevance": "policy uncertainty", "numeric_value": 0.72, "units": "score", "confidence": 1.0, "observed_at": "2024-07-31T17:45:00Z"}
+    ],
+    "execution_assumptions": {"fee_per_contract": 0.65, "slippage_per_contract": 0.02, "multiplier": 100},
+    "option_chain": [
+      {"symbol": "SPY240802C00490000", "underlying_symbol": "SPY", "option_type": "call", "strike": 490.0, "expiration": "2024-08-02", "bid": 11.3, "ask": 11.5, "volume": 2500, "open_interest": 10000, "quote_time": "2024-07-31T17:45:00Z", "vendor_implied_vol": 0.28},
+      {"symbol": "SPY240802P00490000", "underlying_symbol": "SPY", "option_type": "put", "strike": 490.0, "expiration": "2024-08-02", "bid": 1.0, "ask": 1.1, "volume": 2500, "open_interest": 10000, "quote_time": "2024-07-31T17:45:00Z", "vendor_implied_vol": 0.28},
+      {"symbol": "SPY240802C00500000", "underlying_symbol": "SPY", "option_type": "call", "strike": 500.0, "expiration": "2024-08-02", "bid": 3.4, "ask": 3.5, "volume": 8500, "open_interest": 30000, "quote_time": "2024-07-31T17:45:00Z", "vendor_implied_vol": 0.28},
+      {"symbol": "SPY240802P00500000", "underlying_symbol": "SPY", "option_type": "put", "strike": 500.0, "expiration": "2024-08-02", "bid": 3.3, "ask": 3.4, "volume": 8500, "open_interest": 30000, "quote_time": "2024-07-31T17:45:00Z", "vendor_implied_vol": 0.28},
+      {"symbol": "SPY240802C00510000", "underlying_symbol": "SPY", "option_type": "call", "strike": 510.0, "expiration": "2024-08-02", "bid": 0.9, "ask": 1.0, "volume": 2500, "open_interest": 10000, "quote_time": "2024-07-31T17:45:00Z", "vendor_implied_vol": 0.28},
+      {"symbol": "SPY240802P00510000", "underlying_symbol": "SPY", "option_type": "put", "strike": 510.0, "expiration": "2024-08-02", "bid": 10.8, "ask": 11.0, "volume": 2500, "open_interest": 10000, "quote_time": "2024-07-31T17:45:00Z", "vendor_implied_vol": 0.28}
+    ]
+  },
+  "sealed_outcomes": {
+    "exit_spot": 512.0,
+    "exit_option_quotes": {
+      "SPY240802C00490000": {"bid": 22.0, "ask": 22.2, "quote_time": "2024-08-01T17:00:00Z", "implied_vol": 0.18},
+      "SPY240802P00490000": {"bid": 0.03, "ask": 0.05, "quote_time": "2024-08-01T17:00:00Z", "implied_vol": 0.18},
+      "SPY240802C00500000": {"bid": 12.1, "ask": 12.3, "quote_time": "2024-08-01T17:00:00Z", "implied_vol": 0.18},
+      "SPY240802P00500000": {"bid": 0.03, "ask": 0.05, "quote_time": "2024-08-01T17:00:00Z", "implied_vol": 0.18},
+      "SPY240802C00510000": {"bid": 2.2, "ask": 2.3, "quote_time": "2024-08-01T17:00:00Z", "implied_vol": 0.18},
+      "SPY240802P00510000": {"bid": 0.03, "ask": 0.05, "quote_time": "2024-08-01T17:00:00Z", "implied_vol": 0.18}
+    }
+  }
+}

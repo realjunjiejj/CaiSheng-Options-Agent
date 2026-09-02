@@ -12,6 +12,8 @@ def run_long_vol_advocate(
     iv_forecast: IVCrushForecast,
     evidence: list[EvidenceItem],
     llm_client: Any = None,
+    *,
+    allow_fallback: bool = True,
 ) -> VolatilityThesis:
     """Argues the Long Volatility thesis (underpriced jump variance). Rejects hallucinated citations."""
     valid_evidence_ids = [e.evidence_id for e in evidence if e.evidence_id]
@@ -32,6 +34,8 @@ def run_long_vol_advocate(
             res.supporting_evidence_ids = [eid for eid in res.supporting_evidence_ids if eid in valid_evidence_ids]
             return res
         except Exception:
+            if not allow_fallback:
+                raise
             pass
 
     long_edge = move_forecast.edge_pct_spot
@@ -74,6 +78,8 @@ def run_short_vol_advocate(
     iv_forecast: IVCrushForecast,
     evidence: list[EvidenceItem],
     llm_client: Any = None,
+    *,
+    allow_fallback: bool = True,
 ) -> VolatilityThesis:
     """Argues the Short Volatility thesis (overpriced IV & IV crush harvest). Rejects hallucinated citations."""
     valid_evidence_ids = [e.evidence_id for e in evidence if e.evidence_id]
@@ -94,6 +100,8 @@ def run_short_vol_advocate(
             res.supporting_evidence_ids = [eid for eid in res.supporting_evidence_ids if eid in valid_evidence_ids]
             return res
         except Exception:
+            if not allow_fallback:
+                raise
             pass
 
     short_edge = -move_forecast.edge_pct_spot

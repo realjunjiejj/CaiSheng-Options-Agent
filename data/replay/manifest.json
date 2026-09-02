@@ -7,21 +7,48 @@
       "symbol": "NVDA",
       "file": "scenarios/scenario_nvda_2024q2.json",
       "mode": "replay_synthetic",
-      "description": "Synthetic Long Volatility Archetype"
+      "description": "Synthetic Long Volatility Archetype",
+      "sha256": "6e5750e79d540635cd664bae336d99b1f158f905b830a8c70455dd713a5661c8"
     },
     {
       "scenario_id": "SCENARIO-TSLA-2024Q3-AMC",
       "symbol": "TSLA",
       "file": "scenarios/scenario_tsla_2024q3.json",
       "mode": "replay_synthetic",
-      "description": "Synthetic Short Volatility Archetype"
+      "description": "Synthetic Short Volatility Archetype",
+      "sha256": "4ea6d84f3298db793faef1f1049aa3cfcbc5cbbcb70f7ea8f54151d16d390b1a"
     },
     {
       "scenario_id": "SCENARIO-AAPL-2024Q4-STALE",
       "symbol": "AAPL",
       "file": "scenarios/scenario_aapl_2024q4_stale.json",
       "mode": "replay_synthetic",
-      "description": "Synthetic Risk Restraint Archetype"
+      "description": "Synthetic Risk Restraint Archetype",
+      "sha256": "7ac2c28fc3be4333ba27852f999dfb1dcdfe47557fb1681e7ba193404e6a53f2"
+    },
+    {
+      "scenario_id": "SCENARIO-GATE-UNCONFIRMED",
+      "symbol": "GATE",
+      "file": "scenarios/scenario_gate_unconfirmed.json",
+      "mode": "replay_synthetic",
+      "description": "Synthetic Final-Governor Challenge",
+      "sha256": "0927b0498b8d609af54e6b70d3bcf03c23b58f7e594bc01376bce66f8aa10b21"
+    },
+    {
+      "scenario_id": "SCENARIO-CONTEXT-SWITCH",
+      "symbol": "CTX",
+      "file": "scenarios/scenario_context_switch.json",
+      "mode": "replay_synthetic",
+      "description": "Synthetic Agent-Context Challenge",
+      "sha256": "ae225e8297535790f93f41e974ba7606d871cdf3db969d1eb474a249b1dac553"
+    },
+    {
+      "scenario_id": "SCENARIO-SPY-FOMC-REPLAY",
+      "symbol": "SPY",
+      "file": "scenarios/scenario_spy_fomc_replay.json",
+      "mode": "replay_synthetic",
+      "description": "Synthetic Replay-only FOMC Macro Vignette (not live execution)",
+      "sha256": "5bf30dd950e8bc1777f7a10504ccd8358c95e8e1306d5d60c879cbf613c770f6"
     }
   ]
 }

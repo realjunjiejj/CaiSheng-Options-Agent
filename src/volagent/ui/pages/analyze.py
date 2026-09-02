@@ -11,7 +11,7 @@ from volagent.graph.builder import VolAgentWorkflow
 
 def render_analyze_page() -> None:
     st.markdown("## 🔍 Market & Event Scenario Analysis")
-    st.markdown("Select a real earnings event or a synthetic stress scenario to launch the **VolAgent Alpha** multi-agent pipeline.")
+    st.markdown("Select a real earnings event or a synthetic stress scenario to launch the **CaiSheng** multi-agent pipeline.")
 
     replay_mgr = ReplayDataManager()
     scenarios = replay_mgr.get_featured_scenarios()

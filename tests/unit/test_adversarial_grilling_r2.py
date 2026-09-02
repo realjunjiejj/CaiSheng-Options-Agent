@@ -1,4 +1,4 @@
-"""Exhaustive Adversarial Quant & Architectural Grilling Suite for VolAgent Alpha (R2 Verification).
+"""Exhaustive Adversarial Quant & Architectural Grilling Suite for CaiSheng (R2 Verification).
 
 Pillars Tested:
 1. Exact Signed Cash Flow Payoff Identities, Asymmetric Wings & No-Arbitrage Bounds

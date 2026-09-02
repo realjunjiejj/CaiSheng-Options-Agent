@@ -36,13 +36,15 @@ def filter_option_chain(
             rejection_counts["wrong_expiration"] += 1
             continue
 
-        # Reject future quotes strictly
-        if contract.quote_time > as_of_time:
+        # Independent market-data endpoints can differ by milliseconds. Permit
+        # only bounded clock skew; later data remains unavailable to a decision.
+        future_skew = (contract.quote_time - as_of_time).total_seconds()
+        if future_skew > config.clock_skew_tolerance_seconds:
             rejection_counts["future_timestamp"] += 1
             continue
 
         # Freshness check: quote age <= max_quote_age_seconds
-        age_seconds = (as_of_time - contract.quote_time).total_seconds()
+        age_seconds = max(0.0, (as_of_time - contract.quote_time).total_seconds())
         if age_seconds > config.max_quote_age_seconds:
             rejection_counts["stale_quote"] += 1
             continue

@@ -1,4 +1,4 @@
-"""Market clock, timezone handling, and exact day count convention for VolAgent Alpha."""
+"""Market clock, timezone handling, and exact day count convention for CaiSheng."""
 
 from datetime import date, datetime, time, timezone
 import zoneinfo

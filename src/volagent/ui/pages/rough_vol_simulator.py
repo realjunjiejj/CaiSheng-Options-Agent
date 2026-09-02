@@ -24,9 +24,9 @@ from volagent.ui.theme import (
 def render_rough_vol_simulator_page() -> None:
     st.markdown("## 🌪️ Frontier Quantitative Engine: Rough Volatility & Markovian Lifting")
     st.markdown("""
-    **Track 02 Research Frontier — Non-Markovian Volatility Dynamics & Path Signatures**  
-    Standard Black-Scholes and Heston diffusion models assume volatility is a Markovian semimartingale ($H=0.5$). 
-    However, empirical high-frequency options data proves that **volatility is rough ($H \\approx 0.10$)**, 
+    **Options Alpha Research Frontier — Non-Markovian Volatility Dynamics & Path Signatures**
+    Standard Black-Scholes and Heston diffusion models assume volatility is a Markovian semimartingale ($H=0.5$).
+    Empirical high-frequency options studies motivate a **rough-volatility approximation ($H \\approx 0.10$)**,
     producing a severe power-law blowup in short-term implied volatility skew $\\sim T^{H-1/2}$ that standard models fail to fit.
     """)
 
@@ -34,7 +34,7 @@ def render_rough_vol_simulator_page() -> None:
 
     # Interactive Simulator Sidebar / Column Controls
     c_ctrl1, c_ctrl2, c_ctrl3, c_ctrl4 = st.columns(4)
-    
+
     with c_ctrl1:
         hurst = st.slider(
             "🌊 Hurst Parameter (H)",
@@ -105,14 +105,14 @@ def render_rough_vol_simulator_page() -> None:
 
     # 1. Plotly Chart: Implied Volatility Smile Comparison
     st.markdown("### 📈 1. Implied Volatility Smile & Skew: Rough Volatility vs. Standard Diffusion")
-    
+
     strikes = smile_data["strikes"]
     rough_ivs = smile_data["rough_ivs"] * 100.0
     std_ivs = smile_data["standard_ivs"] * 100.0
     base_iv_pct = smile_data["atm_iv"] * 100.0
 
     fig_smile = go.Figure()
-    
+
     # Rough Volatility Curve
     fig_smile.add_trace(go.Scatter(
         x=strikes,
@@ -234,7 +234,7 @@ def render_rough_vol_simulator_page() -> None:
     # 3. Path Signatures Decomposition
     st.markdown("### 🔣 4. Rough Path Signature Analysis (Lyons 1998)")
     st.markdown("""
-    Path Signatures $\\mathbb{S}(X)$ encode the continuous geometric trajectory of stock prices and instantaneous volatility 
+    Path Signatures $\\mathbb{S}(X)$ encode the continuous geometric trajectory of stock prices and instantaneous volatility
     into a coordinate-free tensor series of iterated integrals:
     """)
 

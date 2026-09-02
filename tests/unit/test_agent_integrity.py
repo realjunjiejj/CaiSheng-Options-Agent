@@ -1,13 +1,13 @@
 """Unit tests for agent citation integrity, mock LLM injection, and directional compliance."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock
 import pytest
 
 from volagent.agents.event_magnitude import run_event_magnitude_agent
 from volagent.agents.long_vol import run_long_vol_advocate, run_short_vol_advocate
 from volagent.agents.model_risk import run_model_risk_critic, validate_track_compliance
-from volagent.domain.enums import DataMode, EventTiming, GateStatus
+from volagent.domain.enums import DataMode, EventTiming, GateStatus, OpportunityKind
 from volagent.domain.events import EarningsEvent, EvidenceItem
 from volagent.domain.forecasts import IVCrushForecast, MoveForecast
 from volagent.domain.market import OptionContractSnapshot, UnderlyingSnapshot
@@ -95,6 +95,70 @@ def test_missing_advocate_or_critic_fails_closed():
     assert report.status == GateStatus.FAIL
     assert report.recommendation == "force_no_trade"
     assert any("Missing required advocate thesis" in r for r in report.failure_reasons)
+
+
+def test_daily_opportunity_quotes_are_bounded_by_decision_time_not_scan_start():
+    """An ongoing daily opportunity may fetch quotes after scanning but never after decision."""
+    scan_started_at = datetime(2026, 8, 31, 14, 30, tzinfo=timezone.utc)
+    quote_time = scan_started_at + timedelta(seconds=3)
+    decision_time = quote_time + timedelta(seconds=1)
+    prov = Provenance.from_synthetic("daily-live")
+    underlying = UnderlyingSnapshot(
+        symbol="SPY",
+        price=650.0,
+        bid=649.99,
+        ask=650.01,
+        quote_time=quote_time,
+        realized_vol_10d=0.12,
+        realized_vol_30d=0.15,
+        provenance=prov,
+    )
+    event = EarningsEvent(
+        event_id="daily-vol-2026-08-31-SPY",
+        symbol="SPY",
+        event_type="scheduled_volatility",
+        opportunity_kind=OpportunityKind.DAILY_VOLATILITY,
+        event_time=scan_started_at,
+        timing=EventTiming.DURING_MARKET_HOURS,
+        confirmed=True,
+        decision_time=decision_time,
+        exit_time=decision_time + timedelta(days=1),
+        provenance=prov,
+    )
+    option = OptionContractSnapshot(
+        symbol="SPY260911C00650000",
+        underlying_symbol="SPY",
+        option_type="call",
+        strike=650.0,
+        expiration=date(2026, 9, 11),
+        bid=5.0,
+        ask=5.1,
+        quote_time=quote_time,
+        volume=500,
+        open_interest=1_000,
+        provenance=prov,
+    )
+    forecast = MoveForecast(
+        median_abs_move_pct=0.02,
+        q20_abs_move_pct=0.01,
+        q80_abs_move_pct=0.03,
+        implied_move_pct=0.02,
+        edge_pct_spot=0.0,
+        probability_exceeds_implied=0.5,
+        calibration_confidence=0.7,
+        out_of_distribution=False,
+    )
+
+    report = run_model_risk_critic(
+        underlying,
+        event,
+        [option, option],
+        forecast,
+        require_advocates=False,
+    )
+
+    assert report.temporal_leakage_detected is False
+    assert not any("Temporal leakage" in reason for reason in report.failure_reasons)
 
 
 def test_high_confidence_thesis_conflict_sets_disagreement():

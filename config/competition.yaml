@@ -1,0 +1,77 @@
+application:
+  name: CaiSheng
+  environment: competition
+  timezone: America/New_York
+  random_seed: 20260822
+  max_graph_runtime_seconds: 90
+  llm_timeout_seconds: 20
+  llm_retries: 1
+
+volagent_data_mode: live
+
+market_data:
+  # Explicitly request the conservative feeds available to a Basic paper account.
+  # Upgrade these labels and the Alpaca subscription together if OPRA/SIP is enabled.
+  stock_feed: iex
+  options_feed: indicative
+
+contracts:
+  min_days_after_event: 5
+  max_days_after_event: 14
+  min_open_interest: 250
+  min_daily_volume: 25
+  min_mid_price: 0.10
+  max_relative_spread: 0.12
+  max_quote_age_seconds: 60
+  max_atm_distance_pct: 0.03
+
+forecast:
+  model_mode: implied_residual
+  residual_shrinkage_weight: 0.35
+  require_confidence_bound_edge: true
+  minimum_ev_to_max_loss: 0.02
+  quantiles: [0.20, 0.50, 0.80]
+  min_training_events: 80
+  monte_carlo_scenarios: 3000
+  confidence_floor: 0.65
+  edge_buffer_pct_spot: 0.0025
+
+risk:
+  recommended_risk_nav_pct: 0.0025
+  hard_max_risk_nav_pct: 0.005
+  max_abs_dollar_delta_nav_pct: 0.01
+  max_stress_loss_nav_pct: 0.005
+  max_contracts: 1
+  require_defined_risk_for_short_vol: true
+  reject_dividend_before_expiry: true
+
+mandate:
+  competition_initial_nav: 100000.0
+  recommended_max_loss_per_strategy: 250.0
+  absolute_max_loss_nav_pct: 0.005
+  max_open_strategies: 2
+  max_new_entries_per_day: 1
+  max_total_reserved_risk_nav_pct: 0.005
+  max_same_sector_reserved_risk: 500.0
+  daily_loss_halt_dollars: 500.0
+  drawdown_halt_pct: 0.01
+  mandate_version: caisheng-competition-v1
+
+execution:
+  paper_only: true
+  allow_order_submission: true
+  require_human_approval: false
+  order_type: limit
+  time_in_force: day
+  limit_improvement_fraction: 0.25
+  fee_per_contract: 0.65
+  slippage_per_contract: 0.02
+
+competition:
+  enabled: true
+  lease_required: true
+  lease_path: data/runtime/competition_arm.json
+  arm_duration_hours: 8
+  daily_volatility_symbols: [SPY, QQQ, IWM]
+  scan_start_et: "10:15"
+  scan_end_et: "14:30"

@@ -1,0 +1,139 @@
+{
+  "schema_version": "caisheng.economic_evidence.v1",
+  "claim_policy": {
+    "competition_pnl_source": "broker-confirmed closed Alpaca paper trades only",
+    "historical_scope": "forecast validation; historical option bars are non-executable proxies",
+    "synthetic_scope": "controlled functional replay; not evidence of predictive alpha"
+  },
+  "competition": {
+    "starting_nav": 100000.0,
+    "current_equity": 100000.0,
+    "realized_pnl": 0.0,
+    "closed_trades_count": 0,
+    "status": "AWAITING_BROKER_CONFIRMED_CLOSED_TRADES"
+  },
+  "profitability": {
+    "starting_nav": 100000.0,
+    "competition_pnl": 0.0,
+    "tiers": {
+      "synthetic_replay": {
+        "allowed_claim": "Controlled synthetic functional replay P&L",
+        "trades_count": 4,
+        "excluded_count": 0,
+        "net_pnl": 2044.0,
+        "status": "EVIDENCE_AVAILABLE",
+        "return_on_starting_nav_pct": 2.044,
+        "win_rate_pct": 75.0,
+        "profit_factor": 568.777778,
+        "average_trade_pnl": 511.0,
+        "return_on_total_max_risk_pct": 72.740214,
+        "max_drawdown_dollars": 3.6,
+        "max_drawdown_pct": 0.0036,
+        "cvar_95_dollars": -3.6,
+        "mean_trade_pnl_bootstrap_95ci": [
+          125.4,
+          960.2
+        ],
+        "bootstrap_method": "cluster bootstrap by close date; deterministic seed 42"
+      },
+      "historical_bar_proxy": {
+        "allowed_claim": "Historical bar-close premium proxy \u2014 non-executable",
+        "trades_count": 0,
+        "excluded_count": 0,
+        "net_pnl": 0.0,
+        "status": "NO_EVIDENCE",
+        "return_on_starting_nav_pct": 0.0,
+        "win_rate_pct": 0.0,
+        "profit_factor": null,
+        "average_trade_pnl": 0.0,
+        "return_on_total_max_risk_pct": 0.0,
+        "max_drawdown_dollars": 0.0,
+        "max_drawdown_pct": 0.0,
+        "cvar_95_dollars": null,
+        "mean_trade_pnl_bootstrap_95ci": null,
+        "bootstrap_method": "cluster bootstrap by close date; deterministic seed 42"
+      },
+      "alpaca_paper": {
+        "allowed_claim": "Broker-confirmed Alpaca paper competition P&L",
+        "trades_count": 0,
+        "excluded_count": 0,
+        "net_pnl": 0.0,
+        "status": "NO_EVIDENCE",
+        "return_on_starting_nav_pct": 0.0,
+        "win_rate_pct": 0.0,
+        "profit_factor": null,
+        "average_trade_pnl": 0.0,
+        "return_on_total_max_risk_pct": 0.0,
+        "max_drawdown_dollars": 0.0,
+        "max_drawdown_pct": 0.0,
+        "cvar_95_dollars": null,
+        "mean_trade_pnl_bootstrap_95ci": null,
+        "bootstrap_method": "cluster bootstrap by close date; deterministic seed 42"
+      }
+    }
+  },
+  "historical_predictive_validation": {
+    "evaluated_events_count": 38,
+    "excluded_events_count": 2,
+    "metrics": {
+      "mae": {
+        "agent": 0.04573,
+        "b0_hist_median": 0.04848,
+        "b1_implied_move": 0.04452,
+        "b2_sector_median": 0.04925,
+        "b3_global_median": 0.05057
+      },
+      "rmse": {
+        "agent": 0.06126,
+        "b0_hist_median": 0.06584,
+        "b1_implied_move": 0.05882,
+        "b2_sector_median": 0.06675,
+        "b3_global_median": 0.06866
+      },
+      "median_absolute_error": {
+        "agent": 0.03041,
+        "b0_hist_median": 0.03129,
+        "b1_implied_move": 0.03612,
+        "b2_sector_median": 0.04074,
+        "b3_global_median": 0.04083
+      },
+      "win_rate": {
+        "vs_b0_hist_median": 0.5263,
+        "vs_b1_implied_move": 0.4737,
+        "vs_b2_sector_median": 0.5526,
+        "vs_b3_global_median": 0.6579
+      },
+      "bias": {
+        "mean_forecast": 0.07234,
+        "mean_realized": 0.07717,
+        "forecast_bias": -0.00483
+      },
+      "calibration": {
+        "nominal_interval_pct": 60.0,
+        "empirical_coverage_pct": 52.63,
+        "exceedance_directional_accuracy_pct": 50.0
+      },
+      "bootstrap_95ci_mae_diff": {
+        "agent_minus_b0": [
+          -0.00763,
+          0.0015
+        ],
+        "agent_minus_b1": [
+          -0.00437,
+          0.00653
+        ],
+        "method": "cluster bootstrap by earnings date"
+      },
+      "selective_prediction": {
+        "traded_events_count": 6,
+        "traded_mae_agent": 0.05614,
+        "traded_mae_b1": 0.04969,
+        "abstain_events_count": 32,
+        "abstain_mae_agent": 0.04378,
+        "abstain_mae_b1": 0.04355
+      }
+    },
+    "verdict": "Promising but statistically unproven"
+  },
+  "receipt_hash": "3a09100b312149977496eed39f3d56063eb570f7afa8b886939f8187485211b5"
+}

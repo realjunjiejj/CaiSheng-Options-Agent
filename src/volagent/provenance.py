@@ -1,4 +1,4 @@
-"""Provenance tracking and canonical hashing for VolAgent Alpha."""
+"""Provenance tracking and canonical hashing for CaiSheng."""
 
 from datetime import datetime, timezone
 import hashlib

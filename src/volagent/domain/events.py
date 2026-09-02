@@ -1,19 +1,21 @@
 """Earnings event and evidence domain models."""
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from volagent.domain.enums import EventTiming
+from volagent.domain.enums import EventTiming, OpportunityKind
 from volagent.provenance import Provenance
 
 
 class EarningsEvent(BaseModel):
-    """Earnings event record with point-in-time decision and exit timestamps."""
+    """Event record with point-in-time decision and exit timestamps."""
     model_config = ConfigDict(extra="ignore")
 
     event_id: str
     symbol: str
+    event_type: Literal["earnings", "macro", "scheduled_volatility"] = "earnings"
+    opportunity_kind: OpportunityKind = OpportunityKind.EARNINGS_EVENT
     fiscal_period: str | None = None
     event_time: datetime
     timing: EventTiming

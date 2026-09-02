@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.DS_Store
+node_modules/
 
 # C extensions
 *.so
@@ -42,25 +44,53 @@ ENV/
 .coverage
 htmlcov/
 coverage.xml
+output/playwright/
+.tmp/
+video/out/
+video_submission/
+submission/CaiSheng_Judge_Deck/
 
 # Databases & Ledgers
 *.db
 *.db-journal
 *.sqlite
 *.sqlite3
+data/runtime/competition_arm.json
+data/runtime/competition_arm.json.tmp
+
+# Private one-shot paper-trading scheduler and runtime evidence
+scripts/private/run_paper_trade_2215_sgt.sh
+data/runtime/paper_trade_*.log
+data/runtime/paper_trade_*.json
+data/runtime/paper_trade_*.pid
+data/runtime/.paper_trade_*
 
 # Streamlit & Cache
 .streamlit/
 receipts/
+data/live_evaluations/
 
 # IDE
 .idea/
 .vscode/
+.claude/
+.playwright-cli/
 *.swp
 *.swo
 
 # Local audit and remediation notes
 audit.md
 CORRECTIONS.md
-.agents/
+TODO.md
+# Keep local agent material private, but commit the four official Alpaca skills
+# used by the judge-facing Technology Lockbox.
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/backtest/
+!.agents/skills/paper-trading/
+!.agents/skills/paper-trading-cli/
+!.agents/skills/paper-trading-mcp/
 ORIGINAL_REQUEST.md
+.superdesign/tmp/
+Archiver/

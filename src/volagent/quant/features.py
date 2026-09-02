@@ -1,5 +1,6 @@
 """Quantitative feature construction with strict point-in-time provenance."""
 
+import math
 from typing import Any
 import numpy as np
 
@@ -21,14 +22,14 @@ def build_quantitative_features(
     
     Includes missingness flags and bounded metrics.
     """
-    hist_moves = historical_event_moves or [0.06, 0.08, 0.05, 0.09, 0.07]
-    hist_median = float(np.median(hist_moves))
-    hist_std = float(np.std(hist_moves))
+    hist_moves = [float(move) for move in (historical_event_moves or []) if math.isfinite(float(move)) and float(move) >= 0.0]
+    hist_median = float(np.median(hist_moves)) if hist_moves else None
+    hist_std = float(np.std(hist_moves)) if hist_moves else None
 
     # Realized vol difference
-    rv30 = underlying.realized_vol_30d or 0.35
+    rv30 = underlying.realized_vol_30d
     iv = implied_metrics.atm_iv
-    iv_minus_recent_rv = iv - rv30
+    iv_minus_recent_rv = iv - rv30 if rv30 is not None else None
 
     features: dict[str, Any] = {
         "symbol": underlying.symbol,
@@ -40,10 +41,20 @@ def build_quantitative_features(
         "realized_vol_10d": underlying.realized_vol_10d,
         "realized_vol_30d": underlying.realized_vol_30d,
         "iv_minus_recent_rv": iv_minus_recent_rv,
-        "ratio_implied_to_hist_median": implied_metrics.implied_move_mid_pct / max(1e-4, hist_median),
+        "ratio_implied_to_hist_median": (
+            implied_metrics.implied_move_mid_pct / max(1e-4, hist_median)
+            if hist_median is not None else None
+        ),
         "historical_move_median": hist_median,
         "historical_move_dispersion": hist_std,
+        "historical_move_count": len(hist_moves),
+        "has_historical_event_moves": bool(hist_moves),
         "surface_quality_score": surface_quality,
+        "opportunity_kind": event.opportunity_kind.value,
+        "forecast_horizon_days": max(
+            1,
+            (event.exit_time.date() - event.decision_time.date()).days,
+        ),
         "has_rv10": underlying.realized_vol_10d is not None,
         "has_rv30": underlying.realized_vol_30d is not None,
     }

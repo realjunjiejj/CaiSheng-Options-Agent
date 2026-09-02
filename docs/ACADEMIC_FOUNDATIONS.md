@@ -1,9 +1,9 @@
-# 🎓 VolAgent Alpha: Quantitative Academic Foundations & Literature Review
+# 🎓 CaiSheng: Quantitative Academic Foundations & Literature Review
 
-> **Alpaca AI Trading Agents Hackathon — Track 02: Volatility & Event Trading Agents**  
-> **System:** Neuro-Symbolic Multi-Agent Dialectic Desk for Earnings Volatility Trading  
-> **Authors:** VolAgent Alpha Quantitative Engineering Team  
-> **Status:** Production Grade & Mathematically Verified
+> **Alpaca AI Trading Agents Hackathon — Options Alpha: Volatility & Event Trading Agents**
+> **System:** Neuro-Symbolic Multi-Agent Dialectic Desk for Earnings Volatility Trading
+> **Authors:** CaiSheng Quantitative Engineering Team
+> **Status:** Research prototype; engineering acceptance verified
 
 ---
 
@@ -11,11 +11,11 @@
 
 Trading earnings announcement volatility has historically presented a fundamental tension between **quantitative precision** (pricing options surfaces, modeling jump-diffusion, and managing tail risk) and **qualitative synthesis** (assessing guidance ambiguity, analyst dispersion, and SEC disclosures). Naive LLM agents fail at options trading due to arithmetic hallucinations, lack of non-directional discipline, and unbounded tail risk. Conversely, purely parametric econometric models fail to adapt when qualitative disclosures signal regime shifts.
 
-**VolAgent Alpha** resolves this dichotomy via a **Neuro-Symbolic Multi-Agent Architecture** grounded directly in peer-reviewed quantitative finance literature and modern dialectical AI debate theory. This document outlines the seminal papers, mathematical formulations, and risk management proofs that underpin every subsystem of VolAgent Alpha.
+**CaiSheng** resolves this dichotomy via a **Neuro-Symbolic Multi-Agent Architecture** grounded directly in peer-reviewed quantitative finance literature and modern dialectical AI debate theory. This document outlines the seminal papers, mathematical formulations, and risk management proofs that underpin every subsystem of CaiSheng.
 
 ```
                                   NEURO-SYMBOLIC ARCHITECTURE
-                                  
+
    Point-in-Time Data               Dialectical AI Debate             Deterministic Quant Engine
    ══════════════════               ═════════════════════             ══════════════════════════
  ┌────────────────────┐            ┌─────────────────────┐           ┌────────────────────────────┐
@@ -44,14 +44,14 @@ Trading earnings announcement volatility has historically presented a fundamenta
 * **Seminal Paper:** Carr, P., & Wu, L. (2009). *"The Finite-Moment Log-Normal Model for Option Pricing and the Variance Risk Premium."* Journal of Financial Economics, 93(3), 476-499.
 * **Empirical Fact:** Prior to scheduled information shocks (earnings releases), market makers price substantial jump risk into implied volatility under the risk-neutral measure $\mathbb{Q}$, causing implied volatility $\sigma_{\mathbb{Q}}$ to systematically exceed realized physical volatility $\sigma_{\mathbb{P}}$:
   $$\text{VRP}_t = \mathbb{E}^{\mathbb{P}}\left[\int_t^T \sigma_s^2 ds\right] - \mathbb{E}^{\mathbb{Q}}\left[\int_t^T \sigma_s^2 ds\right] < 0$$
-* **VolAgent Alpha Implementation:**
-  When the forecast jump magnitude is calm or below the market-implied move, VolAgent Alpha harvests this premium via a defined-risk **Short Iron Butterfly**, capturing the rapid post-announcement collapse in implied volatility.
+* **CaiSheng Implementation:**
+  When the forecast jump magnitude is calm or below the market-implied move, CaiSheng harvests this premium via a defined-risk **Short Iron Butterfly**, capturing the rapid post-announcement collapse in implied volatility.
 
 ### 1.2 Post-Earnings Implied Volatility Crush
 * **Seminal Paper:** Patell, J. M., & Wolfson, M. A. (1981). *"The Ex-Ante Information Content of Accounting Earnings Announcements and the Intraday Speed of Adjustment."* Journal of Accounting Research, 19(2), 661-687.
 * **Empirical Fact:** The resolution of uncertainty occurs within minutes of the earnings release, causing an immediate drop of 30% to 60% in front-week implied volatility:
   $$\sigma_{\text{post}} = \sigma_{\text{pre}} - \Delta \sigma_{\text{crush}}, \quad \Delta \sigma_{\text{crush}} \approx 0.50 \times \sigma_{\text{pre}}$$
-* **VolAgent Alpha Implementation:**
+* **CaiSheng Implementation:**
   In `src/volagent/quant/forecast.py` and `src/volagent/quant/repricing.py`, multi-scenario Monte Carlo repricing simulates the joint distribution of price jump $S_{\text{exit}}$ and post-event IV crush $\sigma_{\text{post}}$, pricing options accurately at exit.
 
 ---
@@ -66,7 +66,7 @@ Trading earnings announcement volatility has historically presented a fundamenta
   $$\sigma \approx \frac{C_{\text{ATM}} + P_{\text{ATM}}}{0.80 \cdot S_0 \cdot \sqrt{T}} = \frac{\text{Straddle}_{\text{ATM}}}{0.80 \cdot S_0 \cdot \sqrt{T}}$$
   And the expected percentage move $M_{\text{implied}}$:
   $$M_{\text{implied}} = \frac{\text{Straddle}_{\text{ATM}}}{S_0} \approx 0.80 \cdot \sigma \cdot \sqrt{T}$$
-* **VolAgent Alpha Implementation:**
+* **CaiSheng Implementation:**
   Used in `src/volagent/quant/expected_move.py` and `src/volagent/quant/repricing.py` for high-speed implied move calculation across multi-leg option chains.
 
 ---
@@ -78,11 +78,11 @@ Trading earnings announcement volatility has historically presented a fundamenta
   - James, W., & Stein, C. (1961). *"Estimation with Quadratic Loss."* Proc. 4th Berkeley Symp. Math. Statist. Prob., 1, 361-379.
   - Efron, B. (2012). *"Large-Scale Inference: Empirical Bayes Methods for Estimation, Testing, and Prediction."* Cambridge University Press.
 * **The Problem:** In fast-moving corporate earnings (e.g., quarterly tech earnings), a single company typically has only 4 to 8 relevant historical earnings moves ($N < 10$). Sample medians are noisy and overfit to idiosyncratic history.
-* **The Formulation:** VolAgent Alpha employs a hierarchical Empirical Bayes shrinkage estimator:
+* **The Formulation:** CaiSheng employs a hierarchical Empirical Bayes shrinkage estimator:
   $$\hat{m}_{\text{shrunk}} = w_t \cdot m_{\text{ticker}} + w_s \cdot m_{\text{sector}} + w_g \cdot m_{\text{global}}$$
   Where weights scale adaptively with observation count $N$:
   $$w_t = \begin{cases} 0.75, & N \ge 6 \\ 0.55, & 3 \le N < 6 \\ 0.35, & N < 3 \end{cases}$$
-* **VolAgent Alpha Implementation:**
+* **CaiSheng Implementation:**
   Operationalized in `src/volagent/quant/forecast.py`, ensuring deterministic, un-overfit forecast anchors.
 
 ---
@@ -97,11 +97,11 @@ Trading earnings announcement volatility has historically presented a fundamenta
   $$\rho(X + Y) \le \rho(X) + \rho(Y)$$
 * **Mathematical Definition:**
   $$\text{Loss} = \max(-\text{PnL}, 0), \quad \text{VaR}_{95} = \text{Quantile}(\text{Loss}, 0.95), \quad \text{ES}_{95} = \mathbb{E}[\text{Loss} \mid \text{Loss} \ge \text{VaR}_{95}]$$
-* **VolAgent Alpha Objective Function:**
+* **CaiSheng Objective Function:**
   $$\text{Score} = \mathbb{E}[\text{PnL}] - \lambda \cdot \text{ES}_{95}$$
   Subject to the hard risk invariant:
   $$\frac{\text{Worst 2D Stress Loss}}{\text{NAV}} \le 0.01 \quad (1.0\% \text{ NAV Cap})$$
-* **VolAgent Alpha Implementation:**
+* **CaiSheng Implementation:**
   Operationalized in `src/volagent/quant/repricing.py` and `src/volagent/quant/risk_gate.py`.
 
 ---
@@ -117,7 +117,7 @@ Trading earnings announcement volatility has historically presented a fundamenta
   $$\text{Ratio}(L_i) = 1:1:1:1, \quad \text{Net Credit} > 0$$
 * **Max Loss Formula:**
   $$\text{Max Loss} = \max(K_{p,\text{short}} - K_{p,\text{long}}, K_{c,\text{long}} - K_{c,\text{short}}) \times 100 \times \text{Qty} - (\text{Net Credit} \times 100 \times \text{Qty})$$
-* **VolAgent Alpha Implementation:**
+* **CaiSheng Implementation:**
   Enforced in `src/volagent/quant/strategy_factory.py` and `src/volagent/quant/risk_gate.py`.
 
 ---
@@ -128,7 +128,7 @@ Trading earnings announcement volatility has historically presented a fundamenta
 * **Seminal Papers:**
   - Du, Y., Li, S., Torralba, A., Tenenbaum, J. B., & Mordatch, I. (2023). *"Improving Factuality and Reasoning in Language Models through Multiagent Debate."* arXiv:2305.14325 (MIT & DeepMind).
   - Wang, Z., et al. (2024). *"TradingGPT: Multi-Agent LLM Framework for Quantitative Trading and Risk Management."*
-* **Architecture:** Rather than relying on a single prompt or monotonic agent, VolAgent Alpha pits a **Long Volatility Specialist** against a **Short Volatility Specialist**. Both examine the identical frozen SEC disclosures and option surface data, constructing competing dialectical arguments.
+* **Architecture:** Rather than relying on a single prompt or monotonic agent, CaiSheng pits a **Long Volatility Specialist** against a **Short Volatility Specialist**. Both examine the identical frozen SEC disclosures and option surface data, constructing competing dialectical arguments.
 
 ### 6.2 Citation Grounding & Temporal Isolation
 * **Seminal Paper:** Gao, T., Yen, H., Yu, J., & Chen, D. (2023). *"Enabling Large Language Models to Generate Text with Citations."* EMNLP 2023 (Princeton NLP).
@@ -155,7 +155,7 @@ Trading earnings announcement volatility has historically presented a fundamenta
 
 ---
 
-## 8. Summary of Track 02 Competitive Advantages
+## 8. Summary of Options Alpha Competitive Advantages
 
 1. **Academic Rigor:** Every parameter, formula, and decision rule is explicitly derived from peer-reviewed financial literature.
 2. **Zero Directional Bias:** Enforces strict non-directional volatility strategies ($\text{Dollar Delta} \le 2.0\%$ NAV).

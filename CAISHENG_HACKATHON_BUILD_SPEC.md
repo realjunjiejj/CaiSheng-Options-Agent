@@ -1,4 +1,4 @@
-# VolAgent Alpha
+# CaiSheng
 
 ## Complete Hackathon Build Specification and Agent Handoff
 
@@ -51,7 +51,7 @@ The intended result is **judge-grade**, not production-grade: narrow, rigorous, 
 
 ### 1.1 One-sentence pitch
 
-> VolAgent Alpha is a multi-agent earnings-volatility desk that forecasts whether a stock will move more or less than its options market has priced, challenges that forecast with opposing volatility theses, selects a defined-risk delta-neutral structure, and executes an approved paper trade through Alpaca.
+> CaiSheng is a multi-agent earnings-volatility desk that forecasts whether a stock will move more or less than its options market has priced, challenges that forecast with opposing volatility theses, selects a defined-risk delta-neutral structure, and executes an approved paper trade through Alpaca.
 
 ### 1.2 Track interpretation
 
@@ -141,7 +141,7 @@ The build must remain functional in replay mode even when every answer above is 
 
 ### 2.1 Problem statement
 
-Most trading agents ask whether a stock will rise or fall. That is not the problem VolAgent Alpha solves. Options encode a market-implied distribution. Around earnings, the key question is whether the magnitude of the move and the subsequent volatility repricing are correctly priced.
+Most trading agents ask whether a stock will rise or fall. That is not the problem CaiSheng solves. Options encode a market-implied distribution. Around earnings, the key question is whether the magnitude of the move and the subsequent volatility repricing are correctly priced.
 
 ### 2.2 Central hypothesis
 
@@ -180,7 +180,7 @@ The app must support this exact presentation:
 
 **00:00–00:30 — Frame the problem**
 
-Say: “Most trading agents predict direction. Options trade distributions. VolAgent Alpha asks whether earnings movement and volatility are mispriced.”
+Say: “Most trading agents predict direction. Options trade distributions. CaiSheng asks whether earnings movement and volatility are mispriced.”
 
 **00:30–01:30 — Run a scenario**
 
@@ -486,14 +486,10 @@ VOLAGENT_ENV=demo
 VOLAGENT_LOG_LEVEL=INFO
 VOLAGENT_DATA_MODE=replay
 VOLAGENT_RANDOM_SEED=20260822
-VOLAGENT_LLM_PROVIDER=openai
-VOLAGENT_LLM_MODEL=
-VOLAGENT_LLM_API_KEY=
 ALPACA_API_KEY=
 ALPACA_SECRET_KEY=
 ALPACA_PAPER_TRADE=true
 ALPACA_DATA_FEED=indicative
-VOLAGENT_ENABLE_MCP=false
 VOLAGENT_ALLOW_ORDER_SUBMISSION=false
 VOLAGENT_REPLAY_SCENARIO_ID=
 ```
@@ -512,7 +508,7 @@ Rules:
 
 ```yaml
 application:
-  name: VolAgent Alpha
+  name: CaiSheng
   timezone: America/New_York
   random_seed: 20260822
   max_graph_runtime_seconds: 90
@@ -1889,7 +1885,7 @@ Do not add settings, research, portfolio, chat, or admin pages to P0. Put limite
 
 Display:
 
-- VolAgent Alpha logo or wordmark.
+- CaiSheng logo or wordmark.
 - Subtitle: `Earnings Volatility Intelligence Desk`.
 - Mode badge: `LIVE`, `REPLAY — REAL`, or `REPLAY — SYNTHETIC`.
 - Broker badge: `ALPACA PAPER`, `SIMULATED PAPER`, or `NO EXECUTION`.
@@ -2862,7 +2858,7 @@ Alpaca provides current options chains and Greeks, market/news/account data, mul
 
 ### How is this different from TradingAgents?
 
-TradingAgents provides the organizational inspiration. VolAgent Alpha replaces directional stock analysis with event-variance and IV forecasting, adds a deterministic option repricer and risk optimizer, and learns from calibrated event errors and Greek-attributed P&L.
+TradingAgents provides the organizational inspiration. CaiSheng replaces directional stock analysis with event-variance and IV forecasting, adds a deterministic option repricer and risk optimizer, and learns from calibrated event errors and Greek-attributed P&L.
 
 ### Is the backtest realistic?
 
@@ -3010,9 +3006,9 @@ Use current official documentation during implementation. These links establish 
 Copy this prompt together with the complete specification when assigning implementation:
 
 ```text
-Build VolAgent Alpha exactly according to VolAgent-Alpha-Hackathon-Build-Spec.md.
+Build CaiSheng exactly according to VolAgent-Alpha-Hackathon-Build-Spec.md.
 
-Priorities are: paper-only safety, strict Track 2 non-directional compliance, a deterministic quantitative vertical slice, a reliable five-minute replay demo, historical evaluation, Alpaca integration, then visual polish.
+Priorities are: paper-only safety, strict Options Alpha non-directional compliance, a deterministic quantitative vertical slice, a reliable five-minute replay demo, historical evaluation, Alpaca integration, then visual polish.
 
 Do not expand scope. Implement milestones in order. Do not begin extra agents, calendar spreads, macro events, research crawling, autonomous scheduling, or production infrastructure before every P0 acceptance criterion passes.
 

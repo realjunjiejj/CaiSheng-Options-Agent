@@ -48,9 +48,10 @@ def evaluate_risk_gate(
     # 2. Paper-only endpoint assertion
     add_hard_check("paper_only_endpoint", is_paper_endpoint, f"Paper={is_paper_endpoint}", "True", "Execution must target paper trading endpoint.")
 
-    # 3. Supported Track 2 Decision
+    # 3. Supported Options Alpha Decision
     supported_decision = decision in [Decision.LONG_STRADDLE, Decision.SHORT_IRON_BUTTERFLY, Decision.NO_TRADE]
-    add_hard_check("supported_decision", supported_decision, decision.value, "straddle|iron_butterfly|no_trade", "Decision must be Track 2 compliant.")
+    add_hard_check("supported_decision", supported_decision, decision.value, "straddle|iron_butterfly|no_trade", "Decision must be Options Alpha non-directional compliant.")
+
 
     # 4. Data consistency & mode validity
     add_hard_check("data_consistency", data_mode_valid, "Valid" if data_mode_valid else "Invalid", "Valid", "No mixing of live and unverified data.")
@@ -61,8 +62,12 @@ def evaluate_risk_gate(
     add_hard_check("critic_approval", critic_approved, "Approved" if critic_approved else "Vetoed/Missing", "Approved", "Model-Risk Critic must pass without veto.")
 
     # 6. Event timing validation
-    event_valid = event.timing.value == "amc" and event.confirmed
-    add_hard_check("event_timing", event_valid, f"Timing={event.timing.value}, Confirmed={event.confirmed}", "amc & confirmed", "Event must be confirmed after-market-close.")
+    event_valid = event.confirmed and (
+        event.timing.value == "amc"
+        or (event.event_type in {"macro", "scheduled_volatility"} and event.timing.value == "dmh")
+    )
+    expected_timing = "confirmed AMC earnings, macro, or scheduled during-market volatility opportunity"
+    add_hard_check("event_timing", event_valid, f"Type={event.event_type}, Timing={event.timing.value}, Confirmed={event.confirmed}", expected_timing, "Event timing/type must be supported and confirmed.")
 
     # 7. Model confidence floor & In-Distribution
     conf_passed = move_forecast.calibration_confidence >= 0.60 and not move_forecast.out_of_distribution
@@ -114,7 +119,7 @@ def evaluate_risk_gate(
         recomputed_debit = sum(l.entry_price_assumption for l in candidate.legs) * 100.0
         recomputed_max_loss = recomputed_debit * candidate.quantity
 
-    hard_max_loss_limit = nav * risk_config.hard_max_risk_nav_pct  # 1.0% NAV
+    hard_max_loss_limit = nav * risk_config.hard_max_risk_nav_pct
     # P0-07 Fix: Must be strictly positive, finite, and <= hard cap
     loss_finite_and_positive = math.isfinite(recomputed_max_loss) and recomputed_max_loss >= 0.0
     max_loss_passed = loss_finite_and_positive and (recomputed_max_loss <= hard_max_loss_limit + 1e-4)
@@ -124,13 +129,19 @@ def evaluate_risk_gate(
         max_loss_passed,
         f"${recomputed_max_loss:.2f} ({(recomputed_max_loss/nav)*100:.2f}% NAV)",
         f"${hard_max_loss_limit:.2f} ({risk_config.hard_max_risk_nav_pct*100:.1f}% NAV)",
-        "Strategy max loss must not exceed 1.0% NAV hard risk cap.",
+        f"Strategy max loss must not exceed {risk_config.hard_max_risk_nav_pct*100:.2f}% NAV hard risk cap.",
     )
 
-    # 10. Recommended Risk Budget (0.5% NAV Soft Check)
+    # 10. Recommended Risk Budget
     rec_limit = nav * risk_config.recommended_risk_nav_pct
     rec_passed = recomputed_max_loss <= rec_limit + 1e-4
-    add_soft_check("recommended_risk_budget", rec_passed, f"${recomputed_max_loss:.2f}", f"${rec_limit:.2f}", "Within recommended 0.5% NAV capital budget.")
+    add_soft_check(
+        "recommended_risk_budget",
+        rec_passed,
+        f"${recomputed_max_loss:.2f}",
+        f"${rec_limit:.2f}",
+        f"Within recommended {risk_config.recommended_risk_nav_pct*100:.2f}% NAV capital budget.",
+    )
 
     # 11. P0-04 Fix: True Dollar Delta Neutrality (|Dollar Delta| / NAV <= 2.0%)
     # Net share delta times spot price
@@ -139,11 +150,17 @@ def evaluate_risk_gate(
     delta_passed = dollar_delta_nav_pct <= risk_config.max_abs_dollar_delta_nav_pct
     add_hard_check("delta_neutrality", delta_passed, f"{dollar_delta_nav_pct*100:.2f}% NAV (${true_dollar_delta:.2f})", f"{risk_config.max_abs_dollar_delta_nav_pct*100:.1f}% NAV", "Portfolio dollar delta must not exceed 2.0% NAV.")
 
-    # 12. Worst Stress Loss Cap (1.0% NAV)
+    # 12. Worst Stress Loss Cap
     worst_stress = max(candidate.stress_losses.values()) if candidate.stress_losses else recomputed_max_loss
-    stress_limit = nav * risk_config.max_stress_loss_nav_pct  # 1.0% NAV
+    stress_limit = nav * risk_config.max_stress_loss_nav_pct
     stress_passed = math.isfinite(worst_stress) and (worst_stress >= 0.0) and (worst_stress <= stress_limit + 1e-4)
-    add_hard_check("worst_stress_loss", stress_passed, f"${worst_stress:.2f}", f"${stress_limit:.2f}", "Worst 2D stress loss must not exceed 1.0% NAV.")
+    add_hard_check(
+        "worst_stress_loss",
+        stress_passed,
+        f"${worst_stress:.2f}",
+        f"${stress_limit:.2f}",
+        f"Worst 2D stress loss must not exceed {risk_config.max_stress_loss_nav_pct*100:.2f}% NAV.",
+    )
 
     # 13. Approved Quantity Positivity & Scaling
     qty_valid = candidate.quantity > 0 and candidate.quantity <= risk_config.max_contracts

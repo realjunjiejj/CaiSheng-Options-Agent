@@ -1,5 +1,5 @@
 application:
-  name: VolAgent Alpha (Demo)
+  name: CaiSheng (Demo)
   timezone: America/New_York
   random_seed: 20260822
   max_graph_runtime_seconds: 45

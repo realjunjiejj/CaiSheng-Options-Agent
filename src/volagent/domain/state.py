@@ -1,6 +1,7 @@
 """LangGraph state definition and agent structured output models."""
 
 import operator
+from datetime import date
 from typing import Annotated, Any, Literal, TypedDict
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -86,6 +87,15 @@ class VolAgentState(TypedDict, total=False):
     abstention_reason: AbstentionReason
     mode: DataMode
     symbol: str
+    nav: float
+    historical_moves: list[float]
+    historical_residuals: list[float]
+    historical_event_dates: list[date]
+    live_market_adapter: Any
+    paper_canary: bool
+    enable_agent_debate: bool
+    enable_risk_governor: bool
+    governor_bypassed: bool
     event: EarningsEvent
     underlying: UnderlyingSnapshot
     option_chain: list[OptionContractSnapshot]
@@ -102,7 +112,10 @@ class VolAgentState(TypedDict, total=False):
     audit_proposal: StrategyCandidate | None
     risk_report: RiskReport
     order_plan: OrderPlan | None
-    execution_receipt: ExecutionReceipt | None
+    decision_record: Any
+    ledger: Any
+    portfolio_snapshot: Any
     rejection_reasons: Annotated[list[str], deduplicate_list]
     trace_events: Annotated[list[dict[str, Any]], operator.add]
+    agent_runtime_events: Annotated[list[dict[str, Any]], operator.add]
     artifact_hashes: dict[str, str]

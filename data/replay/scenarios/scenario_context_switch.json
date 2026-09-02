@@ -1,0 +1,34 @@
+{
+  "scenario_id": "SCENARIO-CONTEXT-SWITCH",
+  "symbol": "CTX",
+  "decision_inputs": {
+    "underlying": {"symbol": "CTX", "price": 100.0, "bid": 99.95, "ask": 100.05, "quote_time": "2024-08-28T19:45:00Z", "previous_close": 99.5, "realized_vol_10d": 0.42, "realized_vol_30d": 0.38},
+    "event": {"event_id": "CTX-2024Q2", "symbol": "CTX", "fiscal_period": "Q2 2024", "event_time": "2024-08-28T20:00:00Z", "timing": "amc", "confirmed": true, "decision_time": "2024-08-28T19:45:00Z", "exit_time": "2024-08-29T14:00:00Z"},
+    "historical_moves": [0.06, 0.07, 0.07, 0.08, 0.07],
+    "evidence": [
+      {"evidence_id": "CTX-EV-01", "category": "guidance_uncertainty", "claim": "Management withdrew its prior range before the event.", "magnitude_relevance": "guidance uncertainty", "numeric_value": 0.90, "units": "score", "confidence": 0.95, "observed_at": "2024-08-28T19:45:00Z"},
+      {"evidence_id": "CTX-EV-02", "category": "analyst_dispersion", "claim": "Point-in-time analyst estimates show exceptional dispersion.", "magnitude_relevance": "analyst dispersion", "numeric_value": 0.85, "units": "score", "confidence": 0.93, "observed_at": "2024-08-28T19:45:00Z"},
+      {"evidence_id": "CTX-EV-03", "category": "sec_filing_10q", "claim": "The filing identifies unusually high event uncertainty without a directional view.", "magnitude_relevance": "filing novelty", "numeric_value": 0.09, "units": "ratio", "confidence": 0.92, "observed_at": "2024-08-28T19:45:00Z"}
+    ],
+    "execution_assumptions": {"fee_per_contract": 0.65, "slippage_per_contract": 0.02, "multiplier": 100},
+    "option_chain": [
+      {"symbol": "CTX240830C00090000", "underlying_symbol": "CTX", "option_type": "call", "strike": 90.0, "expiration": "2024-08-30", "bid": 10.8, "ask": 11.0, "bid_size": 100, "ask_size": 100, "volume": 500, "open_interest": 2000, "quote_time": "2024-08-28T19:45:00Z", "vendor_implied_vol": 0.80},
+      {"symbol": "CTX240830P00090000", "underlying_symbol": "CTX", "option_type": "put", "strike": 90.0, "expiration": "2024-08-30", "bid": 0.25, "ask": 0.35, "bid_size": 100, "ask_size": 100, "volume": 500, "open_interest": 2000, "quote_time": "2024-08-28T19:45:00Z", "vendor_implied_vol": 0.80},
+      {"symbol": "CTX240830C00100000", "underlying_symbol": "CTX", "option_type": "call", "strike": 100.0, "expiration": "2024-08-30", "bid": 3.8, "ask": 4.0, "bid_size": 100, "ask_size": 100, "volume": 1000, "open_interest": 5000, "quote_time": "2024-08-28T19:45:00Z", "vendor_implied_vol": 0.80},
+      {"symbol": "CTX240830P00100000", "underlying_symbol": "CTX", "option_type": "put", "strike": 100.0, "expiration": "2024-08-30", "bid": 3.8, "ask": 4.0, "bid_size": 100, "ask_size": 100, "volume": 1000, "open_interest": 5000, "quote_time": "2024-08-28T19:45:00Z", "vendor_implied_vol": 0.80},
+      {"symbol": "CTX240830C00110000", "underlying_symbol": "CTX", "option_type": "call", "strike": 110.0, "expiration": "2024-08-30", "bid": 0.25, "ask": 0.35, "bid_size": 100, "ask_size": 100, "volume": 500, "open_interest": 2000, "quote_time": "2024-08-28T19:45:00Z", "vendor_implied_vol": 0.80},
+      {"symbol": "CTX240830P00110000", "underlying_symbol": "CTX", "option_type": "put", "strike": 110.0, "expiration": "2024-08-30", "bid": 10.8, "ask": 11.0, "bid_size": 100, "ask_size": 100, "volume": 500, "open_interest": 2000, "quote_time": "2024-08-28T19:45:00Z", "vendor_implied_vol": 0.80}
+    ]
+  },
+  "sealed_outcomes": {
+    "exit_spot": 112.0,
+    "exit_option_quotes": {
+      "CTX240830C00090000": {"bid": 21.9, "ask": 22.1, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.42},
+      "CTX240830P00090000": {"bid": 0.03, "ask": 0.05, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.42},
+      "CTX240830C00100000": {"bid": 11.9, "ask": 12.1, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.42},
+      "CTX240830P00100000": {"bid": 0.03, "ask": 0.05, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.42},
+      "CTX240830C00110000": {"bid": 1.9, "ask": 2.1, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.42},
+      "CTX240830P00110000": {"bid": 0.03, "ask": 0.05, "quote_time": "2024-08-29T14:00:00Z", "implied_vol": 0.42}
+    }
+  }
+}

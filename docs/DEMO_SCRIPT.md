@@ -1,46 +1,58 @@
-# 🎬 VolAgent Alpha: 90-Second Winning Demo Script
+# CaiSheng — 90-Second Judge Demo
 
-> **Target Track:** Track 02 — Volatility & Event Trading Agents  
-> **Format:** 90-Second Video or Live Judge Walkthrough
+> Track: Options Alpha Agents
+> Rule: never claim replay P&L as live performance; show the current Alpaca paper-account result from the UI.
 
----
+## 0:00–0:15 — Mandate and live proof
 
-## ⏱️ Video Breakdown & Screen Sequence
+**Screen:** `01 Command`
 
-### 0:00 – 0:15 | Track Fit & Non-Directional Stance
-* **Screen:** Streamlit Pro Terminal (`app.py`), Ticker `NVDA` selected.
-* **Voiceover / Script:**
-  > *"Welcome to VolAgent Alpha. For Track 2, we built a neuro-symbolic multi-agent options volatility desk. Unlike generic bots that try to predict if a stock is going up or down, VolAgent Alpha forecasts unsigned absolute move magnitude $|r|$ and post-earnings IV crush around scheduled AMC earnings."*
-* **Visual Cue:** Point to **"Forecast Absolute Move: 8.2%"** vs **"ATM Straddle Implied Move: 6.1%"** with **"Directional Bias: NONE"**.
+**Say:**
 
----
+> “CaiSheng is an autonomous options-alpha agent operating under the competition’s $100,000 Alpaca paper mandate. This screen is not a mock: current equity comes from Alpaca, and every integration claim is verified or fails closed.”
 
-### 0:15 – 0:35 | Dialectical Multi-Agent Debate
-* **Screen:** Expand **"Agent Debate & Thesis Analysis"** card.
-* **Voiceover / Script:**
-  > *"Our pipeline deploys opposing specialized LLMs grounded in frozen point-in-time SEC disclosures. The Long-Vol Advocate argues that guidance ambiguity justifies paying straddle debit. The Short-Vol Advocate argues that historical IV crush will destroy vega. The Model-Risk Critic independently verifies all citation IDs and checks for temporal lookahead leakage."*
-* **Visual Cue:** Show Long Vol thesis vs Short Vol thesis and verified `EVID-NVDA-10Q-01` citation tags.
+**Do:** Point to Current Equity and Circuit Breaker Status, then the competition strip immediately below it: `AUTONOMY ARMED/DISARMED`, `PAPER ONLY`, $250 target/$500 hard risk, one entry per day, two open positions, `SPY/QQQ/IWM`, and lease expiry. Explain that `python cli.py --competition-arm` issues an account/config-bound eight-hour receipt but does not place an order, while `python cli.py --competition-disarm` immediately blocks new entries without interrupting position monitoring. The scheduler never re-arms itself. Run **Verify Official Alpaca Lockbox**, **Run CaiSheng Preflight**, and **Verify Guarded MCP**. No receipt exposes the account ID or credentials.
 
----
+## 0:15–0:40 — Agent logic and mathematical decision
 
-### 0:35 – 0:55 | Mathematical Pricing & Payoff Proof
-* **Screen:** Interactive Payoff Plot & Greeks Attribution.
-* **Voiceover / Script:**
-  > *"On the quant layer, we compute exact signed cash-flow payoffs and coherent Expected Shortfall (ES95). For NVDA, we select an ATM Long Straddle with positive EV after bid-ask slippage. In Tab 4, our Rough Volatility engine simulates Lifted Heston dynamics with Hurst parameter H=0.10, capturing the power-law skew blowup at front maturities."*
-* **Visual Cue:** Hover over the dynamic payoff plot and switch briefly to the **"🌪️ Rough Volatility Simulator"** tab showing the implied volatility smile comparison.
+**Screen:** `02 Agent`
 
----
+**Say:**
 
-### 0:55 – 1:15 | 20-Point Deterministic Risk Gate & Paper Execution
-* **Screen:** **"20-Point Deterministic Risk Gate"** & **"Alpaca Paper Order Preview"**.
-* **Voiceover / Script:**
-  > *"Before any order can execute, it must pass our deterministic 20-point risk gate. Derived agent fields are never trusted—the gate independently recomputes maximum loss, stress limits, and enforces true spot-scaled dollar delta under 2% NAV. Once human-authorized, an atomic CAS lock submits a Level-3 MLEG paper limit order to Alpaca."*
-* **Visual Cue:** Show 20 green risk checks (`Worst Stress Loss <= 1.0% NAV`, `Dollar Delta <= 2.0% NAV`) and the SHA-256 fingerprint on the JSON execution receipt.
+> “The LangGraph workflow pits a long-volatility advocate against a short-volatility advocate, then sends both to an independent model-risk critic. The option market is the forecast anchor. Deterministic code—not an LLM—owns any residual correction, confidence-bound edge, Monte Carlo expected value, structure selection, sizing, and the twenty-point risk gate.”
 
----
+**Do:** Acknowledge the **SEALED REPLAY** label. Select one archetype, show implied move versus forecast move, opposing theses, exact option legs, payoff curve, and the dynamically derived gate result. Emphasize that this page can execute only in the local simulator.
 
-### 1:15 – 1:30 | Replay Scoreboard & Restraint Proof
-* **Screen:** Tab 2: **"📊 Replay Benchmarks"** and switch to `AAPL`.
-* **Voiceover / Script:**
-  > *"Finally, on AAPL where market data had stale quotes, our agent demonstrated 100% restraint discipline, rejecting the trade with a NO_TRADE veto where naive bots lost thousands. Across our replay benchmarks, VolAgent Alpha delivered +$461.50 in net P&L with zero unhandled risk violations. Thank you."*
-* **Visual Cue:** Show AAPL `NO_TRADE` fail-closed receipt and the benchmark summary table.
+## 0:40–1:05 — Fresh Alpaca path and safety
+
+**Screen:** `03 Paper Trade`
+
+**Say:**
+
+> “Fresh Alpaca paper trading is isolated from replay. The canary requires a confirmed event, current underlying and option quotes, a common ATM call-put pair, valid timestamps, liquidity, calibrated history, and portfolio capacity. It can abstain; that is a valid autonomous decision.”
+
+**Do:** Show the kill-switch state. If submission is disabled, run **live canary — no order**. If a fully approved competition trade already exists, show its canonical DecisionRecord, one-time approval, order receipt, and reconciliation—do not create an improvised trade for the demo.
+
+## 1:05–1:25 — Evidence without overclaiming
+
+**Screen:** `04 Evidence`
+
+**Say:**
+
+> “This controlled ablation uses the same LangGraph, contracts, sizing, seed, and accounting oracle across variants. It demonstrates what the governor and agent context contribute, but it is explicitly synthetic functional evidence—not proof of predictive alpha.”
+
+**Do:** Show the ablation P&L chart, B3 policy-breach evidence, and the historical forecast view. Then state the actual competition-account realized P&L shown in Command.
+
+## 1:25–1:30 — Close
+
+**Say:**
+
+> “CaiSheng’s edge is selective autonomy: quantify volatility mispricing, debate both sides, trade only defined risk, and leave an auditable Alpaca receipt for every decision.”
+
+## Demo guardrails
+
+- Do not call historical replay “live,” “out-of-sample alpha,” or “executable Alpaca P&L.”
+- Do not say official MCP is connected until the Lockbox returns `PASS`; do not say the guarded MCP is connected until its separate verification passes.
+- Do not expose account IDs, API keys, secrets, or raw MCP responses on screen.
+- Do not submit a paper order merely to create excitement; show an existing eligible trade or a fail-closed abstention.
+- If market data or the event source is unavailable, use the sealed replay and explain why the live path refused to proceed.

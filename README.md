@@ -1,19 +1,19 @@
-# ⚡ VolAgent Alpha
+# ⚡ CaiSheng
 
-> **Multi-Agent Options Volatility & Event Desk (Alpaca Hackathon Prototype)**  
-> *Target Track: Track 02 — Volatility & Event Trading Agents*
+> **Autonomous Multi-Agent Options Alpha System (Alpaca Hackathon)**
+> *Target Track: Options Alpha Agents*
 
 ---
 
 ## 🎯 1. One-Sentence Pitch
 
-**VolAgent Alpha** is a neuro-symbolic multi-agent options volatility desk that forecasts whether an equity will move more or less than its options market has priced around after-market-close (AMC) earnings announcements, evaluates opposing volatility theses via dialectical agent debate, enforces a 20-point deterministic quant risk gate, and executes defined-risk delta-neutral paper trades (`LONG_STRADDLE`, `SHORT_IRON_BUTTERFLY`, or `NO_TRADE`) through Alpaca.
+**CaiSheng** scans confirmed earnings events, compares forecast movement with executable option-implied movement, debates long- versus short-volatility structures, applies deterministic portfolio and execution gates, and can autonomously route approved defined-risk paper trades (`LONG_STRADDLE`, `SHORT_IRON_BUTTERFLY`, or `NO_TRADE`) through Alpaca.
 
 ---
 
-## 🏆 2. Strict Track Fit: Movement & Implied Volatility (Never Price Direction)
+## 🏆 2. Options Alpha Strategy
 
-In strict compliance with **Track 02 (Volatility & Event Trading Agents)**:
+The alpha thesis remains deliberately non-directional: earnings options can misprice the magnitude of the coming move and the post-event IV collapse. This specialized signal is evaluated by P&L, risk-adjusted execution, and disciplined abstention under the **Options Alpha Agents** criteria.
 * **Non-Directional Target:** The system forecasts unsigned absolute move magnitude ($Y_e = |\ln(S_{\text{exit}}/S_{\text{entry}})|$) and post-event Implied Volatility change ($\Delta IV_e$), never price direction ($S \uparrow$ or $S \downarrow$).
 * **Delta-Neutral Structures:** Permitted strategies are strictly limited to delta-neutral ATM Long Straddles, defined-risk Short Iron Butterflies with protective wings, or `NO_TRADE`. No standalone directional options.
 * **Dialectical Volatility Debate:** Opposing specialized agents debate whether the market is underpricing jump variance (Long Vol) or overpricing the Variance Risk Premium / IV crush (Short Vol).
@@ -79,37 +79,33 @@ In strict compliance with **Track 02 (Volatility & Event Trading Agents)**:
 
 ## ⚡ 4. Five-Minute Quickstart (Zero Keys Required)
 
-VolAgent Alpha contains **three synthetic archetype scenarios** (`NVDA`, `TSLA`, and `AAPL`) that run instantly with **zero API keys required**:
+CaiSheng contains replay scenarios that run instantly with **zero API keys required**. Replay results are synthetic demonstrations and are never presented as live P&L:
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/your-username/volagent-alpha
-cd volagent-alpha
+# 1. From the repository root, install the locked environment
+uv sync --locked
 
-# 2. Install dependencies
-uv pip install -r requirements.txt
-
-# 3. Launch the Streamlit Judge Dashboard
-streamlit run app.py
+# 2. Launch the Streamlit Judge Dashboard
+uv run streamlit run app.py
 ```
 
 ### Or run directly from terminal CLI:
 ```bash
 # Test NVDA (Long Straddle scenario)
-python cli.py --symbol NVDA
+uv run python cli.py --symbol NVDA
 
 # Test TSLA (Short Iron Butterfly scenario)
-python cli.py --symbol TSLA
+uv run python cli.py --symbol TSLA
 
 # Test AAPL (Stale Quote Risk Rejection scenario)
-python cli.py --symbol AAPL
+uv run python cli.py --symbol AAPL
 ```
 
 ---
 
-## 🌪️ 5. Frontier Quantitative Engine: Rough Volatility & Markovian Lifting
+## 🌪️ 5. Quantitative Research Sandbox
 
-VolAgent Alpha moves beyond standard Black-Scholes and Markovian Heston diffusions to model the empirical reality of short-dated pre-earnings options:
+CaiSheng includes rough-volatility and path-signature research components for judge exploration. They are not represented as the source of live trading alpha unless a DecisionRecord explicitly identifies them:
 * **Rough Volatility ($H \approx 0.10$):** High-frequency log-volatility behaves as fractional Brownian motion (Gatheral, Jaisson, & Rosenbaum 2018), generating the explosive short-term implied volatility skew power-law blowup $\sim T^{H-1/2} \approx T^{-0.40}$.
 * **Markovian Lifting (Abi Jaber, Larsson, & Pulido 2019):** Lifts the singular fractional kernel $K(t) = \frac{t^{H-1/2}}{\Gamma(H+1/2)}$ into an $n$-dimensional Markovian system of Ornstein-Uhlenbeck (OU) factors with geometric mean-reversion speeds, restoring fast $O(N)$ Monte Carlo simulation.
 * **Truncated Path Signatures (Lyons 1998):** Level-2 iterated path integrals $\mathbb{S}(X)^{\le 2}$ capturing non-linear geometric shape, lead-lag relationships, and the Levy area of volatility trajectories.
@@ -133,10 +129,10 @@ VolAgent Alpha moves beyond standard Black-Scholes and Markovian Heston diffusio
 
 ---
 
-## 🧪 7. 69-Item Automated Test Suite (100% Pass Rate)
+## 🧪 7. Automated Verification
 
-VolAgent Alpha maintains an adversarial automated test suite covering:
-* **Quant Pricing & Greeks:** Black-Scholes parity, analytical Greeks, Brent root-finding, Brenner-Subrahmanyam IV inversion.
+CaiSheng maintains an adversarial automated test suite covering:
+* **Quant Pricing & Greeks:** Black-Scholes parity, analytical Greeks, Brent root-finding for Black-Scholes-Merton IV, and the Brenner-Subrahmanyam ATM IV approximation as a separate research diagnostic.
 * **Rough Volatility & Lifting:** Fractional kernel approximation weights, Lifted Heston simulation shapes, path signature tensor dimensions.
 * **Risk Gates & Topologies:** Independent raw quote recomputation, 20-point risk checklist, dollar delta scaling, asymmetric butterfly wing caps.
 * **Execution Safety:** SQLite transactional ledger idempotency, 50-thread concurrent CAS locking, pre-dispatch SHA-256 fingerprint verification.
@@ -146,7 +142,7 @@ VolAgent Alpha maintains an adversarial automated test suite covering:
 ```bash
 # Run the complete test suite
 pytest -v tests/
-# Output: 69 passed in 7.13s (100% pass rate)
+# Current verified result: 349 passed
 ```
 
 ---
@@ -158,17 +154,52 @@ pytest -v tests/
 * **Idempotency & One-Time Approval:** SQLite transactional ledger enforces that an approved token is consumed atomically and dispatched at most once.
 * **Level-3 MLEG Order Serialization:** Formats multi-leg limit orders with explicit per-leg `position_intent` (`buy_to_open` / `sell_to_open`).
 
+### Alpaca Technology Lockbox
+
+The judge cockpit includes a **CaiSheng presentation proof** called the Alpaca
+Technology Lockbox. “Lockbox” is not an Alpaca product name. It verifies:
+
+* Alpaca's official agent-first CLI through `doctor`, `account get`, and market-clock reads, requiring the exact paper endpoint.
+* Alpaca MCP Server V2 through dynamic discovery and a real clock call. The proof process exposes only `assets,options-data`; the `trading` toolset is absent.
+* Four official skills from `alpacahq/alpaca-skills`: backtest, paper trading, CLI paper trading, and MCP paper trading.
+* A locked execution boundary: official proof interfaces are read-only, while all order submission remains behind CaiSheng's canonical approval and broker gateway.
+
+Install the official interfaces, configure paper credentials in `.env`, and run:
+
+```bash
+brew install alpacahq/tap/cli
+uvx alpaca-mcp-server --version
+uv run python cli.py --lockbox --output-json
+```
+
+The receipt is sanitized: it contains no credentials, account number, account
+ID, raw broker response, or profile contents. See
+[`docs/ALPACA_TECHNOLOGY_LOCKBOX.md`](docs/ALPACA_TECHNOLOGY_LOCKBOX.md).
+
+### Cloud deployment boundary
+
+The public Cloud Run service is a credential-free, read-only judge cockpit. The
+private MCP service uses authenticated Streamable HTTP at `/mcp`, with paper
+credentials supplied through Secret Manager and order submission disabled. The
+authoritative SQLite execution ledger runs on one persistent execution host; it
+is never placed on Cloud Storage FUSE. See
+[`docs/CLOUD_RUN_DEPLOYMENT.md`](docs/CLOUD_RUN_DEPLOYMENT.md).
+
+On the persistent host, `caisheng-monitor.service` runs monitor-only cycles every
+20 seconds, emits an atomic heartbeat, and restarts automatically. New-entry
+scans remain separate and fail closed behind preflight and reconciliation.
+
 ---
 
 ## 📚 9. Research Foundations & Academic Whitepaper
 
 For the complete theoretical foundations, financial economics proofs, and LaTeX formulations, refer to:
-* **Whitepaper:** [`docs/ACADEMIC_FOUNDATIONS.md`](file:///Users/yanjunjie/Documents/Alpaca/docs/ACADEMIC_FOUNDATIONS.md)
-* **Bibliography Registry:** [`src/volagent/research/bibliography.py`](file:///Users/yanjunjie/Documents/Alpaca/src/volagent/research/bibliography.py)
-* **Third-Party Open-Source Attribution:** [`THIRD_PARTY_SOURCES.md`](file:///Users/yanjunjie/Documents/Alpaca/THIRD_PARTY_SOURCES.md)
+* **Whitepaper:** [`docs/ACADEMIC_FOUNDATIONS.md`](docs/ACADEMIC_FOUNDATIONS.md)
+* **Bibliography Registry:** [`src/volagent/research/bibliography.py`](src/volagent/research/bibliography.py)
+* **Third-Party Open-Source Attribution:** [`THIRD_PARTY_SOURCES.md`](THIRD_PARTY_SOURCES.md)
 
 ---
 
 ## ⚖️ 10. Disclaimer
 
-*VolAgent Alpha is an educational and research prototype built for the Alpaca AI Trading Agents Hackathon. It trades exclusively in simulated/paper trading environments and does not constitute financial or investment advice.*
+*CaiSheng is an educational and research prototype built for the Alpaca AI Trading Agents Hackathon. It trades exclusively in simulated/paper trading environments and does not constitute financial or investment advice.*

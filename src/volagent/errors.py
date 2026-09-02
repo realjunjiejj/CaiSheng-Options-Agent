@@ -1,4 +1,4 @@
-"""Custom exception taxonomy for VolAgent Alpha."""
+"""Custom exception taxonomy for CaiSheng."""
 
 
 class VolAgentError(Exception):
@@ -32,6 +32,11 @@ class PricingError(VolAgentError):
 
 class ExecutionError(VolAgentError):
     """Raised when order planning, approval, or execution ledger invariants fail."""
+    pass
+
+
+class RuntimeLockBusyError(ExecutionError):
+    """Raised when another valid CaiSheng lifecycle cycle owns the runtime lock."""
     pass
 
 

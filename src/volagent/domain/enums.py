@@ -9,6 +9,12 @@ class EventTiming(str, Enum):
     DURING_MARKET_HOURS = "dmh"
 
 
+class OpportunityKind(str, Enum):
+    EARNINGS_EVENT = "earnings_event"
+    MACRO_EVENT = "macro_event"
+    DAILY_VOLATILITY = "daily_volatility"
+
+
 class Decision(str, Enum):
     LONG_STRADDLE = "long_straddle"
     SHORT_IRON_BUTTERFLY = "short_iron_butterfly"
@@ -59,10 +65,14 @@ class ExecutionStatus(str, Enum):
     SIMULATED = "simulated"
     PREVIEWED = "previewed"
     APPROVED = "approved"
+    INTENT_PERSISTED = "intent_persisted"
     SUBMITTING = "submitting"
     ACCEPTED = "accepted"
-    REJECTED = "rejected"
+    PARTIALLY_FILLED = "partially_filled"
     FILLED = "filled"
+    CANCELED = "canceled"
+    REJECTED = "rejected"
+    CLOSED = "closed"
     FAILED = "failed"
     UNKNOWN = "unknown"
 

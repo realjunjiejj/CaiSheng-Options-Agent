@@ -70,24 +70,32 @@ def run_model_risk_critic(
     short_thesis: VolatilityThesis | None = None,
     evidence: list[EvidenceItem] | None = None,
     llm_client: Any = None,
+    require_advocates: bool = True,
 ) -> CriticReport:
     """Independent risk and compliance audit. Can force NO_TRADE."""
     failure_reasons = []
     warnings = []
 
     # 1. Check missing advocate roles (P1-21 Fix)
-    if long_thesis is None or short_thesis is None:
+    if require_advocates and (long_thesis is None or short_thesis is None):
         failure_reasons.append("Missing required advocate thesis (Long-Vol or Short-Vol agent failed to report).")
 
     # 2. Stale quote audit: check quote age against decision time
-    age_seconds = (event.decision_time - underlying.quote_time).total_seconds()
+    # In a real historical replay, age is measured relative to its locked
+    # historical decision boundary—not wall-clock time today.
+    reference_time = event.decision_time
+    age_seconds = (reference_time - underlying.quote_time).total_seconds()
     stale_data = age_seconds > 1800 or age_seconds < 0
 
     if stale_data:
         failure_reasons.append(f"Stale or invalid market quotes (Age: {age_seconds/60:.1f} minutes).")
 
-    # 3. Temporal leakage: ensure quote & evidence times are prior to event / decision time (P1-19 Fix)
-    temporal_leakage = (underlying.quote_time > event.event_time) or any(c.quote_time > event.event_time for c in option_chain)
+    # 3. Temporal leakage: every input must be observable by the locked decision
+    # cutoff. This also supports an ongoing daily-volatility opportunity whose
+    # scan-start timestamp naturally precedes the market-data fetch.
+    temporal_leakage = (underlying.quote_time > event.decision_time) or any(
+        c.quote_time > event.decision_time for c in option_chain
+    )
     if evidence:
         for ev in evidence:
             ev_time = ev.observed_at or (ev.provenance.observed_at if ev.provenance else None)
@@ -96,7 +104,7 @@ def run_model_risk_critic(
                 failure_reasons.append(f"Temporal leakage in evidence: {ev.evidence_id} observed at {ev_time.isoformat()} after decision time.")
 
     if temporal_leakage:
-        failure_reasons.append("Temporal leakage detected: Market quotes or evidence observed after event start time.")
+        failure_reasons.append("Temporal leakage detected: Market quotes or evidence observed after decision cutoff.")
 
     # 4. Chain Liquidity audit
     if len(option_chain) < 2:
@@ -106,7 +114,7 @@ def run_model_risk_critic(
     if move_forecast.out_of_distribution:
         failure_reasons.append("Quantitative forecast feature vector flagged as Out-Of-Distribution.")
 
-    # 6. Track 02 Compliance Audit (P1-20 Fix)
+    # 6. Options Alpha Compliance Audit (P1-20 Fix)
     compliant, dir_violations = validate_track_compliance(long_thesis, short_thesis)
     if not compliant:
         failure_reasons.extend(dir_violations)
