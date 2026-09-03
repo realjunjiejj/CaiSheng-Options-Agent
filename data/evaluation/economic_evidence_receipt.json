@@ -2,6 +2,7 @@
   "schema_version": "caisheng.economic_evidence.v1",
   "claim_policy": {
     "competition_pnl_source": "broker-confirmed closed Alpaca paper trades only",
+    "account_truth_source": "current Alpaca paper equity minus immutable starting NAV",
     "historical_scope": "forecast validation; historical option bars are non-executable proxies",
     "synthetic_scope": "controlled functional replay; not evidence of predictive alpha"
   },
@@ -9,6 +10,10 @@
     "starting_nav": 100000.0,
     "current_equity": 100000.0,
     "realized_pnl": 0.0,
+    "governed_closed_trade_pnl": 0.0,
+    "full_account_net_pnl": 0.0,
+    "full_account_return_pct": 0.0,
+    "unattributed_and_unrealized_difference": 0.0,
     "closed_trades_count": 0,
     "status": "AWAITING_BROKER_CONFIRMED_CLOSED_TRADES"
   },
@@ -135,5 +140,5 @@
     },
     "verdict": "Promising but statistically unproven"
   },
-  "receipt_hash": "3a09100b312149977496eed39f3d56063eb570f7afa8b886939f8187485211b5"
+  "receipt_hash": "a15b9abbc176b3d5b377fd40a4fe2f05544f547df7bd5abe1104d8e512af9e06"
 }

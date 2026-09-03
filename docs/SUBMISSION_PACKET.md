@@ -34,10 +34,10 @@ CaiSheng never presents replay as competition performance. The controlled `+$2,0
 
 ## App hosting and repository
 
-- Public GitHub repository: **REQUIRED HUMAN INPUT — the current repository is private.**
+- Public GitHub repository: **https://github.com/realjunjiejj/CaiSheng-Options-Agent**
 - Demo platform: **Google Cloud Run — credential-free, read-only judge UI.**
 - Application URL: **https://caisheng-ui-34syptghka-uc.a.run.app**
-- Alpaca paper trading account ID: **REQUIRED HUMAN INPUT — copy the exact competition account ID from Alpaca. Do not use an API key.**
+- Alpaca paper trading account ID: **f58cdc6f-edda-438f-9614-c5fe317b996c**
 
 ## Claim-safe judging summary
 
