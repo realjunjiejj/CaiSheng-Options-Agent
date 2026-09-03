@@ -75,15 +75,22 @@ def reprice_strategy_monte_carlo(
         return candidate
 
     pnl_samples = np.zeros(n_scenarios)
-    total_exit_friction = len(candidate.legs) * (fee_per_contract + slippage_per_contract * 100.0) * qty
+    total_round_trip_friction = (
+        len(candidate.legs)
+        * 2.0
+        * (fee_per_contract + slippage_per_contract * 100.0)
+        * qty
+    )
 
     for i in range(n_scenarios):
         scenario_spot = sampled_spots[i]
         scenario_val = 0.0
 
         for leg in candidate.legs:
-            # Post-event leg IV after event crush
-            leg_iv = max(0.20, 1.35 + iv_shock)
+            # Reprice from the point-in-time contract IV. Legacy synthetic
+            # candidates without IV retain a documented neutral fallback.
+            entry_iv = leg.implied_vol if leg.implied_vol is not None else 0.60
+            leg_iv = max(0.05, min(5.0, entry_iv + iv_shock))
             opt_type = OptionType.CALL if leg.option_type == "call" else OptionType.PUT
             px = bsm_price(
                 spot=scenario_spot,
@@ -98,8 +105,8 @@ def reprice_strategy_monte_carlo(
             else:
                 scenario_val -= px * 100.0 * leg.ratio_qty * qty
 
-        # Net PnL = Exit Value - Entry Debit (or + Entry Credit) - Exit Fees
-        pnl_samples[i] = scenario_val - entry_cost - total_exit_friction
+        # Net PnL = Exit Value - Entry Debit (or + Entry Credit) - round-trip costs
+        pnl_samples[i] = scenario_val - entry_cost - total_round_trip_friction
 
     # Expected Value & Positive Loss Magnitude ES95
     ev = float(np.mean(pnl_samples))
@@ -121,8 +128,7 @@ def reprice_strategy_monte_carlo(
             st_spot = spot_price * (1.0 + p_pct)
             st_val = 0.0
             for leg in candidate.legs:
-                sqrt_t = np.sqrt(max(1.0 / 365.0, exit_horizon_years))
-                base_iv = max(0.20, min(1.50, leg.entry_price_assumption / (spot_price * 0.40 * sqrt_t))) if leg.entry_price_assumption > 0 else 0.65
+                base_iv = leg.implied_vol if leg.implied_vol is not None else 0.60
                 leg_st_iv = max(0.05, base_iv + v_pts)
                 opt_type = OptionType.CALL if leg.option_type == "call" else OptionType.PUT
                 px = bsm_price(
@@ -137,7 +143,7 @@ def reprice_strategy_monte_carlo(
                 else:
                     st_val -= px * 100.0 * leg.ratio_qty * qty
 
-            st_pnl = st_val - entry_cost - total_exit_friction
+            st_pnl = st_val - entry_cost - total_round_trip_friction
             st_loss = max(-st_pnl, 0.0)
             key = f"P_{int(p_pct*100):+03d}_IV_{int(v_pts*100):+03d}"
             stress_results[key] = float(st_loss)

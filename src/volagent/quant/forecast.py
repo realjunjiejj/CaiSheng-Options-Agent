@@ -18,7 +18,7 @@ def compute_implied_residual_forecast(
     features: dict[str, Any],
     historical_residuals: list[float] | None = None,
     residual_shrinkage_weight: float = 0.35,
-    model_version: str = "v3.0.0-implied-residual",
+    model_version: str = "v3.1.0-implied-residual",
 ) -> tuple[MoveForecast, IVCrushForecast]:
     """Anchor to executable implied move and apply only a strongly shrunk correction.
 
@@ -39,25 +39,38 @@ def compute_implied_residual_forecast(
 
     signal: float | None = None
     effective_weight = 0.0
+    correction_dispersion = 0.0
     if finite_residuals:
         sample_shrinkage = len(finite_residuals) / (len(finite_residuals) + 8.0)
         signal = float(np.median(finite_residuals))
         effective_weight = weight * sample_shrinkage
+        corrected_residuals = np.asarray(finite_residuals, dtype=float) * effective_weight
+        correction_dispersion = float(
+            (np.percentile(corrected_residuals, 80) - np.percentile(corrected_residuals, 20)) / 2.0
+        )
     elif opportunity_kind in {"daily_volatility", "OpportunityKind.DAILY_VOLATILITY"}:
-        realized = [
+        realized_vols = [
             float(features[key])
             for key in ("realized_vol_10d", "realized_vol_30d")
             if key in features and math.isfinite(float(features[key])) and float(features[key]) >= 0.0
         ]
         horizon = max(1.0, float(features.get("forecast_horizon_days", 1.0)))
-        if realized:
-            realized_move = float(np.mean(realized)) * math.sqrt(horizon / 252.0)
-            signal = realized_move - implied_move
+        if realized_vols:
+            realized_moves = np.asarray(realized_vols, dtype=float) * math.sqrt(horizon / 252.0)
+            residual_estimates = realized_moves - implied_move
+            signal = float(np.mean(residual_estimates))
             effective_weight = weight
+            corrected_estimates = residual_estimates * effective_weight
+            correction_dispersion = float(
+                (np.max(corrected_estimates) - np.min(corrected_estimates)) / 2.0
+            )
 
     correction = effective_weight * signal if signal is not None else 0.0
     median = max(0.001, implied_move + correction)
-    uncertainty = max(0.0025, abs(correction) * 1.5, implied_move * 0.12)
+    # Estimate uncertainty independently from the signed correction. Tying the
+    # interval width to 1.5 * |correction| made both confidence-bound trading
+    # conditions mathematically unreachable, regardless of signal strength.
+    uncertainty = max(0.0025, correction_dispersion, implied_move * 0.12)
     q20 = max(0.001, median - uncertainty)
     q80 = median + uncertainty
     in_distribution = signal is not None and quality >= 0.70

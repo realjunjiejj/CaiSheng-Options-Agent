@@ -13,7 +13,14 @@ from volagent.quant.strategy_factory import (
 )
 
 
-def create_mock_contract(symbol: str, opt_type: str, strike: float, bid: float, ask: float) -> OptionContractSnapshot:
+def create_mock_contract(
+    symbol: str,
+    opt_type: str,
+    strike: float,
+    bid: float,
+    ask: float,
+    implied_vol: float | None = None,
+) -> OptionContractSnapshot:
     dt = datetime(2024, 8, 28, 19, 45, 0, tzinfo=timezone.utc)
     prov = Provenance(source_name="t", source_uri="t", retrieved_at=dt, observed_at=dt, content_hash="h", data_mode=DataMode.REPLAY_SYNTHETIC)
     return OptionContractSnapshot(
@@ -27,8 +34,25 @@ def create_mock_contract(symbol: str, opt_type: str, strike: float, bid: float, 
         quote_time=dt,
         volume=1000,
         open_interest=5000,
+        vendor_implied_vol=implied_vol,
         provenance=prov,
     )
+
+
+def test_strategy_factory_preserves_point_in_time_contract_iv():
+    """Factory-built legs must carry Alpaca IV into economic repricing."""
+    atm_call = create_mock_contract("TSLA241101C00215000", "call", 215.0, 11.20, 11.50, 0.42)
+    atm_put = create_mock_contract("TSLA241101P00215000", "put", 215.0, 10.40, 10.70, 0.47)
+
+    candidate = build_long_straddle_candidate(
+        atm_call,
+        atm_put,
+        spot_price=215.0,
+        nav=100_000.0,
+        risk_config=RiskConfig(),
+    )
+
+    assert [leg.implied_vol for leg in candidate.legs] == [0.42, 0.47]
 
 
 def test_malformed_or_mismatched_iron_butterfly_rejected():

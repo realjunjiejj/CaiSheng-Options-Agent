@@ -47,6 +47,7 @@ def _agent_runtime_event(
 from volagent.agents.event_magnitude import run_event_magnitude_agent
 from volagent.agents.long_vol import run_long_vol_advocate, run_short_vol_advocate
 from volagent.agents.model_risk import run_model_risk_critic
+from volagent.clock import year_fraction_to_expiry
 from volagent.config import VolAgentSettings
 from volagent.data.replay import ReplayDataManager
 from volagent.domain.enums import AbstentionReason, DataMode, Decision, GateStatus, RunStatus
@@ -629,6 +630,16 @@ def strategy_and_risk_node(state: VolAgentState, agent_settings: VolAgentSetting
     chain = state.get("option_chain", [])
     nav = float(state.get("nav", 100_000.0))
     risk_config = agent_settings.risk.model_copy(update={"max_contracts": 1}) if state.get("paper_canary", False) else agent_settings.risk
+    event = state.get("event")
+
+    def remaining_time_at_exit(candidate: Any) -> float:
+        """Calculate option time remaining at the declared strategy exit."""
+        if event is None or not candidate.legs:
+            return 1.0 / 365.0
+        return max(
+            1.0 / 365.0,
+            min(year_fraction_to_expiry(event.exit_time, leg.expiration) for leg in candidate.legs),
+        )
 
     candidates = []
 
@@ -639,6 +650,7 @@ def strategy_and_risk_node(state: VolAgentState, agent_settings: VolAgentSetting
             straddle, spot, state["move_forecast"], state["iv_forecast"],
             n_scenarios=agent_settings.forecast.monte_carlo_scenarios,
             random_seed=agent_settings.application.random_seed,
+            exit_horizon_years=remaining_time_at_exit(straddle),
             slippage_per_contract=agent_settings.execution.slippage_per_contract,
             fee_per_contract=agent_settings.execution.fee_per_contract,
         )
@@ -661,6 +673,7 @@ def strategy_and_risk_node(state: VolAgentState, agent_settings: VolAgentSetting
                     iron_bfly, spot, state["move_forecast"], state["iv_forecast"],
                     n_scenarios=agent_settings.forecast.monte_carlo_scenarios,
                     random_seed=agent_settings.application.random_seed,
+                    exit_horizon_years=remaining_time_at_exit(iron_bfly),
                     slippage_per_contract=agent_settings.execution.slippage_per_contract,
                     fee_per_contract=agent_settings.execution.fee_per_contract,
                 )
@@ -669,7 +682,6 @@ def strategy_and_risk_node(state: VolAgentState, agent_settings: VolAgentSetting
     # OOD (Out-of-Distribution) Evaluation
     from volagent.quant.ood import detect_out_of_distribution
     move_fc = state.get("move_forecast")
-    event = state.get("event")
     atm_iv_val = getattr(implied_metrics, "straddle_iv_avg", 0.45) if implied_metrics else 0.45
     ood_result = detect_out_of_distribution(
         spot=spot,

@@ -213,7 +213,7 @@ def test_implied_residual_forecast_is_anchored_and_shrinks_the_rv_signal():
 
     assert raw_rv_move < forecast.median_abs_move_pct < features["implied_move_pct"]
     assert forecast.q20_abs_move_pct < forecast.median_abs_move_pct < forecast.q80_abs_move_pct
-    assert forecast.model_version.startswith("v3.0.0-implied-residual")
+    assert forecast.model_version.startswith("v3.1.0-implied-residual")
     assert forecast.out_of_distribution is False
     assert -5.0 <= iv_forecast.median_iv_change_points <= 5.0
 
@@ -251,19 +251,95 @@ def test_implied_residual_forecast_only_corrects_with_explicit_point_in_time_res
     assert forecast.out_of_distribution is False
 
 
-def _implied_metrics() -> ImpliedMoveMetrics:
+def _implied_metrics(implied_mid_pct: float = 0.050, spread_pct: float = 0.002) -> ImpliedMoveMetrics:
+    implied_bid_pct = implied_mid_pct - spread_pct
+    implied_ask_pct = implied_mid_pct + spread_pct
     return ImpliedMoveMetrics(
         atm_strike=100.0,
-        implied_move_ask_dollars=5.2,
-        implied_move_mid_dollars=5.0,
-        implied_move_bid_dollars=4.8,
-        implied_move_ask_pct=0.052,
-        implied_move_mid_pct=0.050,
-        implied_move_bid_pct=0.048,
+        implied_move_ask_dollars=implied_ask_pct * 100.0,
+        implied_move_mid_dollars=implied_mid_pct * 100.0,
+        implied_move_bid_dollars=implied_bid_pct * 100.0,
+        implied_move_ask_pct=implied_ask_pct,
+        implied_move_mid_pct=implied_mid_pct,
+        implied_move_bid_pct=implied_bid_pct,
         call_mid_iv=0.40,
         put_mid_iv=0.40,
         straddle_iv_avg=0.40,
     )
+
+
+def test_competition_forecast_can_reach_long_short_and_no_trade_decisions():
+    """Production forecasts must make every selector outcome reachable without bypassing its gate."""
+    settings = load_config("config/competition.yaml")
+    long_forecast, _ = compute_implied_residual_forecast(
+        {
+            "implied_move_pct": 0.040,
+            "atm_iv": 0.30,
+            "realized_vol_10d": 0.80,
+            "realized_vol_30d": 0.70,
+            "forecast_horizon_days": 5,
+            "surface_quality_score": 0.90,
+            "opportunity_kind": "daily_volatility",
+        }
+    )
+    long_candidate = _candidate(expected_pnl=20.0)
+    selected, decision, _, _ = select_best_strategy(
+        [long_candidate],
+        long_forecast,
+        _implied_metrics(0.040, 0.001),
+        confidence_floor=settings.forecast.confidence_floor,
+        require_confidence_bound_edge=settings.forecast.require_confidence_bound_edge,
+        minimum_ev_to_max_loss=settings.forecast.minimum_ev_to_max_loss,
+    )
+    assert selected is long_candidate
+    assert decision == Decision.LONG_STRADDLE
+
+    short_forecast, _ = compute_implied_residual_forecast(
+        {
+            "implied_move_pct": 0.080,
+            "atm_iv": 0.50,
+            "realized_vol_10d": 0.12,
+            "realized_vol_30d": 0.10,
+            "forecast_horizon_days": 1,
+            "surface_quality_score": 0.90,
+            "opportunity_kind": "daily_volatility",
+        }
+    )
+    short_candidate = _candidate(expected_pnl=20.0).model_copy(
+        update={"decision": Decision.SHORT_IRON_BUTTERFLY}
+    )
+    selected, decision, _, _ = select_best_strategy(
+        [short_candidate],
+        short_forecast,
+        _implied_metrics(0.080, 0.001),
+        confidence_floor=settings.forecast.confidence_floor,
+        require_confidence_bound_edge=settings.forecast.require_confidence_bound_edge,
+        minimum_ev_to_max_loss=settings.forecast.minimum_ev_to_max_loss,
+    )
+    assert selected is short_candidate
+    assert decision == Decision.SHORT_IRON_BUTTERFLY
+
+    no_edge_forecast, _ = compute_implied_residual_forecast(
+        {
+            "implied_move_pct": 0.050,
+            "atm_iv": 0.35,
+            "realized_vol_10d": 0.355,
+            "realized_vol_30d": 0.355,
+            "forecast_horizon_days": 5,
+            "surface_quality_score": 0.90,
+            "opportunity_kind": "daily_volatility",
+        }
+    )
+    selected, decision, _, _ = select_best_strategy(
+        [long_candidate, short_candidate],
+        no_edge_forecast,
+        _implied_metrics(0.050, 0.001),
+        confidence_floor=settings.forecast.confidence_floor,
+        require_confidence_bound_edge=settings.forecast.require_confidence_bound_edge,
+        minimum_ev_to_max_loss=settings.forecast.minimum_ev_to_max_loss,
+    )
+    assert selected is None
+    assert decision == Decision.NO_TRADE
 
 
 def _candidate(expected_pnl: float, max_loss: float = 400.0) -> StrategyCandidate:

@@ -19,6 +19,7 @@ class OptionLeg(BaseModel):
     position_intent: str = "buy_to_open"
     ratio_qty: int = Field(default=1, ge=1)
     entry_price_assumption: float
+    implied_vol: float | None = Field(default=None, gt=0)
     delta: float = 0.0
     gamma: float = 0.0
     theta: float = 0.0
