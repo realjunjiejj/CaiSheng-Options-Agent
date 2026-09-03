@@ -1,6 +1,6 @@
 # ⚡ CaiSheng · Auditable Multi-Agent Options Alpha
 
-> **Autonomous multi-agent options volatility trading desk built for the Alpaca Options Alpha Hackathon (Track 02).**  
+> **Autonomous multi-agent options trading desk built on Alpaca's technology stack.**  
 > Trades movement only when the quantified edge survives adversarial multi-agent debate, governed by a 20-point deterministic risk engine.
 
 🌐 **Live Demo:** [https://caisheng-ui-34syptghka-uc.a.run.app](https://caisheng-ui-34syptghka-uc.a.run.app)
